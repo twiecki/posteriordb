@@ -76,3 +76,91 @@ Validation failed: Agent did not achieve validation after 20 tool calls
 ```
 Validation failed: Agent did not achieve validation after 20 tool calls
 ```
+
+### seeds_model (2026-03-11 08:43)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### Mtbh_model (2026-03-11 08:43)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### dogs_log (2026-03-11 08:47)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### seeds_centered_model (2026-03-11 08:48)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### garch11 (2026-03-11 08:49)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### logistic_regression_rhs (2026-03-11 08:50)
+```
+Exception: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 207286 tokens > 200000 maximum'}, 'request_id': 'req_011CYw1JZbKcWtcfR9qP1qGA'}
+Traceback (most recent call last):
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 96, in <module>
+    results[model_name] = transpile_model(model_name)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 65, in transpile_model
+    result = transpile_stan_to_pymc(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/pymc_rust_compiler/stan_to_pymc.py", line 341, in transpile_stan_to_pymc
+    response = client.messages.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_utils/_utils.py", line 282, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/resources/messages/messages.py", line 996, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1364, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1137, in request
+    raise self._make_status_error_from_response(err.response) from None
+anthropic.BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 207286 tokens > 200000 maximum'}, 'request_id': 'req_011CYw1JZbKcWtcfR9qP1qGA'}
+
+```
+
+### dogs_nonhierarchical (2026-03-11 08:50)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### seeds_stanified_model (2026-03-11 08:52)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### dugongs_model (2026-03-11 08:55)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### arK (2026-03-11 08:57)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### Mh_model (2026-03-11 08:59)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### lsat_model (2026-03-11 09:00)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### arma11 (2026-03-11 09:01)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
