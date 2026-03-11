@@ -36,3 +36,18 @@ Validation failed: Agent did not achieve validation after 20 tool calls
 ```
 Validation failed: Agent did not achieve validation after 20 tool calls
 ```
+
+### radon_county (2026-03-11 08:16)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### radon_hierarchical_intercept_noncentered (2026-03-11 08:22)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### radon_partially_pooled_centered (2026-03-11 08:24)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
