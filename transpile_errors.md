@@ -368,3 +368,19 @@ Validation failed: Agent did not achieve validation after 20 tool calls
 ```
 Validation failed: Agent did not achieve validation after 20 tool calls
 ```
+
+### Mh_model (2026-03-11 20:19)
+```
+Exception: No API key. Set ANTHROPIC_API_KEY or pass api_key=
+Traceback (most recent call last):
+  File "/home/user/daemon/projects/bayes-ai-compiler/../posteriordb/run_transpile.py", line 96, in <module>
+    results[model_name] = transpile_model(model_name)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/../posteriordb/run_transpile.py", line 65, in transpile_model
+    result = transpile_stan_to_pymc(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/pymc_rust_compiler/stan_to_pymc.py", line 283, in transpile_stan_to_pymc
+    raise ValueError("No API key. Set ANTHROPIC_API_KEY or pass api_key=")
+ValueError: No API key. Set ANTHROPIC_API_KEY or pass api_key=
+
+```
