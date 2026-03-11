@@ -24,30 +24,28 @@ def make_model(data: dict):
         Compute the changepoint matrix A[T, S].
         A[i, j] = 1 if t[i] >= t_change[j], 0 otherwise.
         """
-        A = np.zeros((T, S))
-        for i in range(T):
-            for j in range(S):
-                if t[i] >= t_change[j]:
-                    A[i, j] = 1.0
-        return A
+        return (np.asarray(t)[:, None] >= np.asarray(t_change)[None, :]).astype(float)
     
     def logistic_gamma(k, m, delta, t_change, S):
         """
         Compute adjusted offsets for piecewise logistic trend continuity.
+        Uses pytensor.scan since each step depends on the previous m value.
         """
+        import pytensor
+
         # Compute the rate in each segment
         k_s = pt.concatenate([pt.atleast_1d(k), k + pt.cumsum(delta)])
-        
-        # Piecewise offsets
-        gamma = pt.zeros(S)
-        m_pr = m
-        
-        for i in range(S):
-            gamma_i = (t_change[i] - m_pr) * (1 - k_s[i] / k_s[i + 1])
-            gamma = pt.set_subtensor(gamma[i], gamma_i)
-            m_pr = m_pr + gamma_i
-        
-        return gamma
+
+        def gamma_step(tc_i, k_i, k_ip1, m_prev):
+            gamma_i = (tc_i - m_prev) * (1 - k_i / k_ip1)
+            return gamma_i, m_prev + gamma_i
+
+        (gammas, _), _ = pytensor.scan(
+            fn=gamma_step,
+            sequences=[pt.as_tensor_variable(t_change), k_s[:-1], k_s[1:]],
+            outputs_info=[None, m],
+        )
+        return gammas
     
     def logistic_trend(k, m, delta, t, cap, A, t_change, S):
         """

@@ -33,38 +33,23 @@ def make_model(data: dict) -> pm.Model:
             p_eff_j = (1.0 - y[:, j-1]) * p + y[:, j-1] * c
             p_eff = pt.set_subtensor(p_eff[:, j], p_eff_j)
         
-        # Custom likelihood
-        logp_components = []
-        
-        # For each individual
-        for i in range(M):
-            if observed_mask[i]:
-                # Individual was observed: z[i] = 1
-                logp_omega = pt.log(omega)
-                # Bernoulli log pmf for capture history
-                y_i = y[i, :]  # Individual i's capture history
-                p_eff_i = p_eff[i, :]  # Individual i's effective probabilities
-                logp_captures = pt.sum(y_i * pt.log(p_eff_i) + (1 - y_i) * pt.log(1 - p_eff_i))
-                logp_components.append(logp_omega + logp_captures)
-            else:
-                # Individual never observed: marginalize over z[i]
-                y_i = y[i, :]
-                p_eff_i = p_eff[i, :]
-                
-                # Case z[i] = 1: individual present
-                logp_z1 = pt.log(omega) + pt.sum(y_i * pt.log(p_eff_i) + (1 - y_i) * pt.log(1 - p_eff_i))
-                
-                # Case z[i] = 0: individual absent
-                logp_z0 = pt.log(1 - omega)
-                
-                # log_sum_exp(logp_z1, logp_z0)
-                max_logp = pt.maximum(logp_z1, logp_z0)
-                log_sum_exp = max_logp + pt.log(pt.exp(logp_z1 - max_logp) + pt.exp(logp_z0 - max_logp))
-                logp_components.append(log_sum_exp)
-        
-        # Sum all log probability components
-        total_logp = pt.sum(pt.stack(logp_components))
-        pm.Potential("likelihood", total_logp)
+        # Vectorized likelihood
+        # Bernoulli logp for all individuals: shape (M, T)
+        bernoulli_logp = y * pt.log(p_eff) + (1 - y) * pt.log(1 - p_eff)
+        bern_logp_sum = pt.sum(bernoulli_logp, axis=1)  # shape (M,)
+
+        # Observed individuals: z[i] = 1
+        logp_obs = pt.log(omega) + bern_logp_sum[observed_mask]
+
+        # Unobserved individuals: marginalize over z
+        # For unobserved, y=0 for all t, so p_eff[:,0]=p and p_eff[:,j]=p for j>0
+        # All unobserved individuals have identical p_eff rows, so same logp
+        n_unobs = int(np.sum(~observed_mask))
+        logp_z1_unobs = pt.log(omega) + bern_logp_sum[~observed_mask]
+        logp_z0 = pt.log(1 - omega)
+        logp_unobs = pm.math.logaddexp(logp_z1_unobs, logp_z0)
+
+        pm.Potential("likelihood", pt.sum(logp_obs) + pt.sum(logp_unobs))
         
         # Generated quantities (deterministic transformations)
         omega_nd = pm.Deterministic(

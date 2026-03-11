@@ -17,15 +17,10 @@ def make_model(data: dict) -> pm.Model:
         # Autoregressive structure for t in (K+1):T (Stan 1-based indexing)
         # In Python 0-based: t in K:(T)
         
-        # Build the means for each observation from K onwards
-        mu_list = []
-        for t in range(K, T):  # t from K to T-1 (0-based)
-            mu_t = alpha
-            for k in range(K):  # k from 0 to K-1
-                mu_t = mu_t + beta[k] * y_data[t - k - 1]  # y[t-k] in Stan (1-based) -> y_data[t-k-1] in Python
-            mu_list.append(mu_t)
-        
-        mu = pt.stack(mu_list)
+        # Build lag matrix for vectorized AR(K) computation
+        y_arr = np.array(y_data)
+        lag_matrix = np.column_stack([y_arr[K-k-1:T-k-1] for k in range(K)])
+        mu = alpha + pt.dot(lag_matrix, beta)
         
         # Likelihood for observations from K+1 to T (Stan 1-based) -> K to T-1 (0-based)
         y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y_data[K:])

@@ -29,85 +29,80 @@ def make_model(data: dict) -> pm.Model:
         uv1 = pm.Normal("uv1", mu=0, sigma=1, shape=S)
         uv2 = pm.Normal("uv2", mu=0, sigma=1, shape=S)
         
-        # Apply multivariate normal structure via potential
+        # Apply multivariate normal structure via potential (vectorized over S species)
         # Stan: target += multi_normal_lpdf(uv | rep_vector(0, 2), cov_matrix_2d(sigma_uv, rho_uv))
-        mvn_potential = 0.0
-        
-        for i in range(S):
-            # For each species i, we have [uv1[i], uv2[i]] ~ MVN(0, Sigma)
-            # where Sigma = [[sigma1^2, rho*sigma1*sigma2], [rho*sigma1*sigma2, sigma2^2]]
-            
-            u1 = uv1[i]
-            u2 = uv2[i] 
-            
-            # Covariance matrix elements
-            var1 = sigma_uv[0]**2
-            var2 = sigma_uv[1]**2
-            cov12 = rho_uv * sigma_uv[0] * sigma_uv[1]
-            
-            # Determinant and inverse
-            det_sigma = var1 * var2 - cov12**2
-            inv_11 = var2 / det_sigma
-            inv_22 = var1 / det_sigma
-            inv_12 = -cov12 / det_sigma
-            
-            # Quadratic form
-            quad_form = inv_11 * u1**2 + inv_22 * u2**2 + 2 * inv_12 * u1 * u2
-            
-            # MVN log density
-            mvn_potential += -0.5 * quad_form - 0.5 * pt.log(det_sigma) - np.log(2 * np.pi)
-            
-            # Subtract the standard normal densities that are already counted
-            mvn_potential -= -0.5 * u1**2 - 0.5 * np.log(2 * np.pi)
-            mvn_potential -= -0.5 * u2**2 - 0.5 * np.log(2 * np.pi)
-        
+
+        # Stack into matrix: shape (S, 2)
+        uv = pt.stack([uv1, uv2], axis=1)
+
+        # Build covariance matrix
+        var1 = sigma_uv[0]**2
+        var2 = sigma_uv[1]**2
+        cov12 = rho_uv * sigma_uv[0] * sigma_uv[1]
+        cov_matrix = pt.stack([pt.stack([var1, cov12]), pt.stack([cov12, var2])])
+
+        # Vectorized MVN logp for all species
+        inv_cov = pt.linalg.solve(cov_matrix, pt.eye(2))
+        det_cov = var1 * var2 - cov12**2
+        quad_forms = pt.sum(pt.dot(uv, inv_cov) * uv, axis=1)  # shape (S,)
+        mvn_logp = -0.5 * pt.sum(quad_forms) - 0.5 * S * pt.log(det_cov) - S * np.log(2 * np.pi)
+
+        # Subtract already-counted standard normal densities
+        std_normal_logp = -0.5 * pt.sum(uv1**2) - 0.5 * pt.sum(uv2**2) - S * np.log(2 * np.pi)
+        mvn_potential = mvn_logp - std_normal_logp
         pm.Potential("mvn_structure", mvn_potential)
         
         # Transformed parameters - match Stan exactly
         logit_psi = uv1 + alpha  # Stan: logit_psi[i] = uv[i, 1] + alpha
         logit_theta = uv2 + beta  # Stan: logit_theta[i] = uv[i, 2] + beta
         
-        # Likelihood components
-        total_logp = 0.0
-        
-        # Helper functions
-        def log_inv_logit(x):
-            return x - pt.log1p(pt.exp(x))
-        
-        def log1m_inv_logit(x):
-            return -pt.log1p(pt.exp(x))
-        
-        def binomial_logit_lpmf(k, n_trials, logit_p):
-            # binomial(k | n, p) with p = invlogit(logit_p)
-            return (k * logit_p - n_trials * pt.log1p(pt.exp(logit_p)) +
-                   pt.gammaln(n_trials + 1) - pt.gammaln(k + 1) - pt.gammaln(n_trials - k + 1))
-        
-        def lp_observed(x_val, k_val, logit_psi_val, logit_theta_val):
-            return log_inv_logit(logit_psi_val) + binomial_logit_lpmf(x_val, k_val, logit_theta_val)
-        
-        def lp_unobserved(k_val, logit_psi_val, logit_theta_val):
-            lp_obs_0 = lp_observed(0, k_val, logit_psi_val, logit_theta_val)
-            lp_not_psi = log1m_inv_logit(logit_psi_val)
-            return pm.math.logaddexp(lp_obs_0, lp_not_psi)
-        
-        # Observed species likelihood
-        for i in range(n):
-            # 1 ~ bernoulli(Omega) - observed species are available
-            total_logp += pt.log(Omega)
-            
-            for j in range(J):
-                x_ij = X[i, j]
-                if x_ij > 0:
-                    total_logp += lp_observed(x_ij, K, logit_psi[i], logit_theta[i])
-                else:
-                    total_logp += lp_unobserved(K, logit_psi[i], logit_theta[i])
-        
-        # Never observed species likelihood  
-        for i in range(n, S):
-            lp_unavailable = pt.log(1 - Omega)  # bernoulli_lpmf(0 | Omega)
-            lp_available = pt.log(Omega) + J * lp_unobserved(K, logit_psi[i], logit_theta[i])
-            total_logp += pm.math.logaddexp(lp_unavailable, lp_available)
-        
+        # Likelihood components (vectorized)
+
+        # --- Observed species likelihood (vectorized over n species and J sites) ---
+        X_arr = np.array(X)  # shape (n, J)
+        detected_mask = X_arr > 0  # shape (n, J), numpy boolean
+
+        logit_psi_obs = logit_psi[:n]    # shape (n,)
+        logit_theta_obs = logit_theta[:n]  # shape (n,)
+
+        log_psi = logit_psi_obs - pt.log1p(pt.exp(logit_psi_obs))   # log_inv_logit
+        log1m_psi = -pt.log1p(pt.exp(logit_psi_obs))                # log1m_inv_logit
+
+        # Binomial logit lpmf for all (species, site) pairs: shape (n, J)
+        X_float = pt.as_tensor_variable(X_arr.astype(np.float64))
+        binom_lpmf = (X_float * logit_theta_obs[:, None]
+                      - K * pt.log1p(pt.exp(logit_theta_obs[:, None]))
+                      + pt.gammaln(K + 1) - pt.gammaln(X_float + 1)
+                      - pt.gammaln(K - X_float + 1))
+
+        # lp for sites where species was detected
+        lp_detected = log_psi[:, None] + binom_lpmf  # shape (n, J)
+
+        # lp for sites where species was NOT detected: logaddexp(lp_observed(0,...), log1m_psi)
+        binom_0 = -K * pt.log1p(pt.exp(logit_theta_obs[:, None]))  # binom(0|K,logit_p)
+        # gammaln(K+1) - gammaln(1) - gammaln(K+1) = 0, so binom coeff for x=0 vanishes
+        lp_unobs_present = log_psi[:, None] + binom_0
+        lp_unobs_absent = log1m_psi[:, None]
+        lp_not_detected = pm.math.logaddexp(lp_unobs_present, lp_unobs_absent)
+
+        # Select based on detection mask
+        lp_sites = pt.where(detected_mask, lp_detected, lp_not_detected)
+        logp_observed_species = n * pt.log(Omega) + pt.sum(lp_sites)
+
+        # --- Unobserved species likelihood (vectorized over S-n species) ---
+        logit_psi_unobs = logit_psi[n:]      # shape (S-n,)
+        logit_theta_unobs = logit_theta[n:]   # shape (S-n,)
+
+        log_psi_u = logit_psi_unobs - pt.log1p(pt.exp(logit_psi_unobs))
+        log1m_psi_u = -pt.log1p(pt.exp(logit_psi_unobs))
+        binom_0_u = -K * pt.log1p(pt.exp(logit_theta_unobs))
+        lp_unobs_u = pm.math.logaddexp(log_psi_u + binom_0_u, log1m_psi_u)  # per species
+
+        lp_unavailable = pt.log(1 - Omega)
+        lp_available = pt.log(Omega) + J * lp_unobs_u
+        logp_unobserved_species = pt.sum(pm.math.logaddexp(lp_unavailable, lp_available))
+
+        total_logp = logp_observed_species + logp_unobserved_species
         pm.Potential("likelihood", total_logp)
         
         # Add correction for HalfCauchy distributions

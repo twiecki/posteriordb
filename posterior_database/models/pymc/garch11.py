@@ -22,18 +22,22 @@ def make_model(data: dict) -> pm.Model:
         # Add Jacobian for the transform: log|d(beta1)/d(beta1_raw)| = log(1 - alpha1)
         pm.Potential("beta1_jacobian", pt.log(1 - alpha1))
         
-        # Build sigma array manually since T is known
-        sigma_list = [sigma1]  # sigma[0] = sigma1 (corresponds to sigma[1] in Stan)
-        
-        for t in range(1, T):  # t=1 to T-1 (corresponds to t=2 to T in Stan)
-            # In Stan: sigma[t] = sqrt(alpha0 + alpha1 * square(y[t-1] - mu) + beta1 * square(sigma[t-1]))
-            # With 0-based indexing: sigma[t] uses y[t-1] and sigma[t-1]
-            sigma_prev = sigma_list[t-1]
-            y_prev = y[t-1]
-            sigma_curr = pt.sqrt(alpha0 + alpha1 * (y_prev - mu)**2 + beta1 * sigma_prev**2)
-            sigma_list.append(sigma_curr)
-        
-        sigma = pt.stack(sigma_list)
+        import pytensor
+
+        # Build sigma array using scan for vectorized GARCH(1,1) computation
+        def garch_step(y_prev, sigma_prev, alpha0, alpha1, beta1_val, mu):
+            return pt.sqrt(alpha0 + alpha1 * (y_prev - mu)**2 + beta1_val * sigma_prev**2)
+
+        y_tensor = pt.as_tensor_variable(y)
+        sigma1_val = pt.as_tensor_variable(np.float64(sigma1))
+
+        sigmas, _ = pytensor.scan(
+            fn=garch_step,
+            sequences=[y_tensor[:-1]],
+            outputs_info=[sigma1_val],
+            non_sequences=[alpha0, alpha1, beta1, mu],
+        )
+        sigma = pt.concatenate([pt.atleast_1d(sigma1_val), sigmas])
         sigma = pm.Deterministic("sigma", sigma)
         
         # Likelihood

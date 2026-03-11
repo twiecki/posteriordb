@@ -27,26 +27,20 @@ def make_model(data: dict) -> pm.Model:
         # Transformed parameters
         eps = pm.Deterministic("eps", pm.math.logit(mean_p) + sigma * eps_raw)
         
-        # Likelihood using custom potentials for each observation
-        for i in range(M):
-            if y[i] > 0:
-                # Case: animal was detected at least once (z[i] == 1)
-                logp_detected = (pm.math.log(omega) + 
-                               pm.logp(pm.Binomial.dist(n=T, logit_p=eps[i]), y[i]))
-                pm.Potential(f"likelihood_{i}", logp_detected)
-            else:
-                # Case: animal was never detected (y[i] == 0)
-                # Two possibilities: present but not detected, or not present
-                
-                # z[i] == 1 (present but not detected)
-                logp_present = (pm.math.log(omega) + 
-                              pm.logp(pm.Binomial.dist(n=T, logit_p=eps[i]), 0))
-                
-                # z[i] == 0 (not present)
-                logp_absent = pm.math.log(1 - omega)
-                
-                # Log-sum-exp of the two possibilities
-                logp_total = pm.math.logaddexp(logp_present, logp_absent)
-                pm.Potential(f"likelihood_{i}", logp_total)
+        # Vectorized likelihood
+        y_arr = np.array(y, dtype=np.float64)
+        obs_mask = y > 0
+
+        # Observed individuals: z[i] = 1
+        logp_obs = (pm.math.log(omega) +
+                    pm.logp(pm.Binomial.dist(n=T, logit_p=eps[obs_mask]), y_arr[obs_mask]))
+
+        # Unobserved individuals: marginalize over z
+        logp_present = (pm.math.log(omega) +
+                        pm.logp(pm.Binomial.dist(n=T, logit_p=eps[~obs_mask]), 0))
+        logp_absent = pm.math.log(1 - omega)
+        logp_unobs = pm.math.logaddexp(logp_present, logp_absent)
+
+        pm.Potential("likelihood", pt.sum(logp_obs) + pt.sum(logp_unobs))
     
     return model

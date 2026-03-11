@@ -18,33 +18,22 @@ def make_model(data: dict) -> pm.Model:
         omega = pm.Uniform("omega", lower=0, upper=1)  # Inclusion probability
         p = pm.Uniform("p", lower=0, upper=1)  # Detection probability
         
-        # Likelihood using custom potential
-        # For each individual i, we have a mixture:
-        # - If s[i] > 0: individual was observed, so z[i]=1 with prob omega, 
-        #   and s[i] captures ~ binomial(T, p)
-        # - If s[i] == 0: either z[i]=1 with no captures, or z[i]=0
-        
-        logp_contributions = []
-        
-        for i in range(M):
-            if s[i] > 0:
-                # Individual was observed: z[i] = 1
-                # log P(z[i]=1) + log P(s[i] | z[i]=1, T, p)
-                # Use the binomial log probability manually
-                log_binom_coeff = pt.gammaln(T + 1) - pt.gammaln(s[i] + 1) - pt.gammaln(T - s[i] + 1)
-                contrib = (pt.log(omega) + 
-                          log_binom_coeff + s[i] * pt.log(p) + (T - s[i]) * pt.log(1 - p))
-            else:
-                # Individual not observed: could be z[i]=1 with no captures or z[i]=0
-                # log P(s[i]=0) = log[P(z[i]=1) * P(s[i]=0|z[i]=1) + P(z[i]=0)]
-                log_prob_present_not_detected = pt.log(omega) + T * pt.log(1 - p)
-                log_prob_absent = pt.log(1 - omega)
-                contrib = pm.math.logsumexp(pt.stack([log_prob_present_not_detected, log_prob_absent]))
-            
-            logp_contributions.append(contrib)
-        
-        # Add all contributions to the model
-        pm.Potential("likelihood", pt.sum(pt.stack(logp_contributions)))
+        # Vectorized likelihood
+        s_arr = np.array(s, dtype=np.float64)
+        obs_mask = s > 0
+
+        # Observed individuals: z[i] = 1, binomial logp
+        s_obs = s_arr[obs_mask]
+        log_binom = pt.gammaln(T + 1) - pt.gammaln(s_obs + 1) - pt.gammaln(T - s_obs + 1)
+        logp_obs = pt.log(omega) + log_binom + s_obs * pt.log(p) + (T - s_obs) * pt.log(1 - p)
+
+        # Unobserved individuals: all have s=0, marginalize over z
+        n_unobs = int(np.sum(~obs_mask))
+        logp_z1_unobs = pt.log(omega) + T * pt.log(1 - p)
+        logp_z0 = pt.log(1 - omega)
+        logp_unobs = pm.math.logaddexp(logp_z1_unobs, logp_z0)
+
+        pm.Potential("likelihood", pt.sum(logp_obs) + n_unobs * logp_unobs)
         
         # Generated quantities
         omega_nd = pm.Deterministic("omega_nd", 
