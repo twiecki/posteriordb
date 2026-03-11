@@ -15,4 +15,7 @@ TODO.tdl
 *.exe
 *.hpp
 *.dll
+*.so
 tmp*
+__pycache__/
+.pytest_cache/
