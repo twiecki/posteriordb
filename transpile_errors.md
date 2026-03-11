@@ -164,3 +164,112 @@ Validation failed: Agent did not achieve validation after 20 tool calls
 ```
 Validation failed: Agent did not achieve validation after 20 tool calls
 ```
+
+### dugongs_model (2026-03-11 09:16)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### kronecker_gp (2026-03-11 09:16)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### nn_rbm1bJ10 (2026-03-11 09:17)
+```
+Exception: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 216487 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3M8hS622kEecc3Weyr'}
+Traceback (most recent call last):
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 96, in <module>
+    results[model_name] = transpile_model(model_name)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 65, in transpile_model
+    result = transpile_stan_to_pymc(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/pymc_rust_compiler/stan_to_pymc.py", line 341, in transpile_stan_to_pymc
+    response = client.messages.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_utils/_utils.py", line 282, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/resources/messages/messages.py", line 996, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1364, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1137, in request
+    raise self._make_status_error_from_response(err.response) from None
+anthropic.BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 216487 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3M8hS622kEecc3Weyr'}
+
+```
+
+### nn_rbm1bJ100 (2026-03-11 09:18)
+```
+Exception: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 221870 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3SsurAyNoH2SP5h4yV'}
+Traceback (most recent call last):
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 96, in <module>
+    results[model_name] = transpile_model(model_name)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 65, in transpile_model
+    result = transpile_stan_to_pymc(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/pymc_rust_compiler/stan_to_pymc.py", line 341, in transpile_stan_to_pymc
+    response = client.messages.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_utils/_utils.py", line 282, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/resources/messages/messages.py", line 996, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1364, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1137, in request
+    raise self._make_status_error_from_response(err.response) from None
+anthropic.BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 221870 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3SsurAyNoH2SP5h4yV'}
+
+```
+
+### ldaK2 (2026-03-11 09:18)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### ldaK5 (2026-03-11 09:18)
+```
+Exception: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 200395 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3VLCTJWbQnoVxfxsuX'}
+Traceback (most recent call last):
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 96, in <module>
+    results[model_name] = transpile_model(model_name)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/posteriordb/run_transpile.py", line 65, in transpile_model
+    result = transpile_stan_to_pymc(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/pymc_rust_compiler/stan_to_pymc.py", line 341, in transpile_stan_to_pymc
+    response = client.messages.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_utils/_utils.py", line 282, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/resources/messages/messages.py", line 996, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1364, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/daemon/projects/bayes-ai-compiler/.venv/lib/python3.11/site-packages/anthropic/_base_client.py", line 1137, in request
+    raise self._make_status_error_from_response(err.response) from None
+anthropic.BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'prompt is too long: 200395 tokens > 200000 maximum'}, 'request_id': 'req_011CYw3VLCTJWbQnoVxfxsuX'}
+
+```
+
+### irt_2pl (2026-03-11 09:19)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
+
+### hmm_example (2026-03-11 09:20)
+```
+Validation failed: Agent did not achieve validation after 20 tool calls
+```
