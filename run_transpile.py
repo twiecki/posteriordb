@@ -1,12 +1,13 @@
-"""Batch transpile Stan models from posteriordb to PyMC v5."""
+"""Run transpilation from bayes-ai-compiler venv context.
 
+Usage: cd bayes-ai-compiler && uv run python ../posteriordb/run_transpile.py [model_name ...]
+"""
 import json
 import sys
 import zipfile
+import traceback
+from datetime import datetime
 from pathlib import Path
-
-# Add pymc-rust-ai-compiler to path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bayes-ai-compiler"))
 
 from pymc_rust_compiler.stan_to_pymc import transpile_stan_to_pymc
 
@@ -15,10 +16,10 @@ STAN_DIR = POSTERIORDB / "models" / "stan"
 PYMC_DIR = POSTERIORDB / "models" / "pymc"
 DATA_DIR = POSTERIORDB / "data" / "data"
 POSTERIORS_DIR = POSTERIORDB / "posteriors"
+ERROR_LOG = Path(__file__).resolve().parent / "transpile_errors.md"
 
 
 def find_data_for_model(model_name: str) -> dict | None:
-    """Find data for a model by looking at posteriors that reference it."""
     for posterior_file in POSTERIORS_DIR.glob("*.json"):
         info = json.loads(posterior_file.read_text())
         if info.get("model_name") == model_name:
@@ -32,18 +33,29 @@ def find_data_for_model(model_name: str) -> dict | None:
     return None
 
 
+def log_error(model_name: str, error_msg: str):
+    """Append error to the error log."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    with open(ERROR_LOG, "a") as f:
+        f.write(f"\n### {model_name} ({timestamp})\n")
+        f.write(f"```\n{error_msg}\n```\n")
+
+
 def transpile_model(model_name: str) -> bool:
-    """Transpile a single Stan model to PyMC."""
     stan_path = STAN_DIR / f"{model_name}.stan"
     if not stan_path.exists():
-        print(f"ERROR: Stan file not found: {stan_path}")
+        msg = f"Stan file not found: {stan_path}"
+        print(f"ERROR: {msg}")
+        log_error(model_name, msg)
         return False
 
     stan_code = stan_path.read_text()
     data = find_data_for_model(model_name)
 
     if data is None:
-        print(f"WARNING: No data found for {model_name}, skipping")
+        msg = f"No data found for {model_name}"
+        print(f"WARNING: {msg}, skipping")
+        log_error(model_name, msg)
         return False
 
     print(f"\n{'='*60}")
@@ -57,7 +69,6 @@ def transpile_model(model_name: str) -> bool:
     )
 
     if result.success:
-        # Save to posteriordb pymc directory
         PYMC_DIR.mkdir(parents=True, exist_ok=True)
         output_path = PYMC_DIR / f"{model_name}.py"
         result.save(output_path)
@@ -65,28 +76,28 @@ def transpile_model(model_name: str) -> bool:
         print(f"Tokens: {result.token_usage}")
         return True
     else:
+        error_msg = "; ".join(result.validation_errors)
         print(f"\nFAILED: {model_name}")
         for err in result.validation_errors:
             print(f"  - {err}")
+        log_error(model_name, f"Validation failed: {error_msg}")
         return False
 
 
 if __name__ == "__main__":
-    models = sys.argv[1:] if len(sys.argv) > 1 else [
-        "eight_schools_centered",
-        "eight_schools_noncentered",
-        "blr",
-        "earn_height",
-        "wells_dist",
-        "radon_pooled",
-    ]
+    models = sys.argv[1:]
+    if not models:
+        print("Usage: uv run python run_transpile.py model1 model2 ...")
+        sys.exit(1)
 
     results = {}
     for model_name in models:
         try:
             results[model_name] = transpile_model(model_name)
         except Exception as e:
+            tb = traceback.format_exc()
             print(f"\nERROR transpiling {model_name}: {e}")
+            log_error(model_name, f"Exception: {e}\n{tb}")
             results[model_name] = False
 
     print(f"\n\n{'='*60}")
