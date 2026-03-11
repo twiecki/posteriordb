@@ -4,49 +4,64 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
 
-    # Extract data
+    # Extract data and convert to numpy arrays
+    y = np.array(data['y'])
     M = data['M']
-    T = data['T'] 
-    y = data['y']
+    T = data['T']
     
-    # Convert y to numpy array if it isn't already
-    y = np.array(y)
-    
-    # Compute transformed data (size of observed data set)
+    # Transformed data: count observed animals (C)
     C = np.sum(y > 0)
-    
+
     with pm.Model() as model:
-        # Parameters with implicit uniform priors (bounded parameters with no explicit priors)
-        omega = pm.Uniform("omega", lower=0, upper=1)
-        mean_p = pm.Uniform("mean_p", lower=0, upper=1) 
+        # Parameters with implicit uniform priors (bounded with no explicit prior)
+        omega = pm.Uniform("omega", lower=0, upper=1)  # Inclusion probability
+        mean_p = pm.Uniform("mean_p", lower=0, upper=1)  # Mean detection probability
         sigma = pm.Uniform("sigma", lower=0, upper=5)
         
-        # Raw effects for non-centered parameterization
+        # Non-centered parameterization
         eps_raw = pm.Normal("eps_raw", mu=0, sigma=1, shape=M)
         
         # Transformed parameters
         eps = pm.Deterministic("eps", pm.math.logit(mean_p) + sigma * eps_raw)
         
-        # Likelihood using custom potentials for each observation
-        for i in range(M):
-            if y[i] > 0:
-                # Case: animal was detected at least once (z[i] == 1)
-                logp_detected = (pm.math.log(omega) + 
-                               pm.logp(pm.Binomial.dist(n=T, logit_p=eps[i]), y[i]))
-                pm.Potential(f"likelihood_{i}", logp_detected)
-            else:
-                # Case: animal was never detected (y[i] == 0)
-                # Two possibilities: present but not detected, or not present
-                
-                # z[i] == 1 (present but not detected)
-                logp_present = (pm.math.log(omega) + 
-                              pm.logp(pm.Binomial.dist(n=T, logit_p=eps[i]), 0))
-                
-                # z[i] == 0 (not present)
-                logp_absent = pm.math.log(1 - omega)
-                
-                # Log-sum-exp of the two possibilities
-                logp_total = pm.math.logaddexp(logp_present, logp_absent)
-                pm.Potential(f"likelihood_{i}", logp_total)
-    
+        # Custom likelihood using a function approach
+        def custom_logp(omega, eps, y):
+            # Bernoulli log probability for being in the population
+            log_omega = pt.log(omega)
+            log_one_minus_omega = pt.log(1 - omega)
+            
+            # Detection probabilities on logit scale
+            p_logit = eps
+            
+            # For observed animals (y > 0): must be present
+            observed = pt.gt(y, 0)
+            
+            # Binomial logit log probability
+            # binomial_logit_lpmf(k | n, alpha) = k * alpha - n * log1p_exp(alpha) + log_choose(n, k)
+            # For now, ignore the binomial coefficient as it's constant for fixed n and doesn't affect sampling
+            binomial_logp = (y * p_logit - T * pt.log1p(pt.exp(p_logit)))
+            
+            # For observed animals: log(omega) + binomial_logit_lpmf(y[i] | T, eps[i])
+            obs_contribution = observed * (log_omega + binomial_logp)
+            
+            # For unobserved animals (y = 0): marginalize
+            unobserved = pt.eq(y, 0)
+            
+            # Case 1: present but never detected (y = 0)
+            binomial_0_logp = -T * pt.log1p(pt.exp(p_logit))  # 0 * p_logit = 0
+            present_never_detected = log_omega + binomial_0_logp
+            
+            # Case 2: not present (broadcast scalar to vector)
+            not_present = pt.full_like(present_never_detected, log_one_minus_omega)
+            
+            # Log-sum-exp for marginalization
+            # Stack along new dimension and then logsumexp
+            logp_stack = pt.stack([present_never_detected, not_present])
+            unobs_logp = pm.math.logsumexp(logp_stack, axis=0)
+            unobs_contribution = unobserved * unobs_logp
+            
+            return pt.sum(obs_contribution + unobs_contribution)
+        
+        pm.Potential("likelihood", custom_logp(omega, eps, y))
+
     return model
