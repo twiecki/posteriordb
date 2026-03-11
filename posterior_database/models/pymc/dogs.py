@@ -5,33 +5,32 @@ def make_model(data: dict) -> pm.Model:
     import numpy as np
 
     with pm.Model() as model:
-        # Extract data
+        # Extract data and ensure numpy arrays
         n_dogs = data['n_dogs']
         n_trials = data['n_trials']
-        y_data = np.array(data['y'])  # shape: [n_dogs, n_trials]
+        y = np.array(data['y'])
         
         # Parameters
         beta = pm.Normal("beta", mu=0, sigma=100, shape=3)
         
         # Transformed parameters - compute cumulative counts
-        n_avoid = np.zeros((n_dogs, n_trials))
-        n_shock = np.zeros((n_dogs, n_trials))
+        # We need to compute cumulative sums of (1-y) and y, but with a lag
+        # n_avoid[j,t] = sum of (1 - y[j, 0:t-1]) for t >= 1, 0 for t=0
+        # n_shock[j,t] = sum of y[j, 0:t-1] for t >= 1, 0 for t=0
         
-        for j in range(n_dogs):
-            n_avoid[j, 0] = 0
-            n_shock[j, 0] = 0
-            
-            for t in range(1, n_trials):
-                n_avoid[j, t] = n_avoid[j, t-1] + 1 - y_data[j, t-1]
-                n_shock[j, t] = n_shock[j, t-1] + y_data[j, t-1]
+        # Create shifted cumulative sums
+        # For avoid: cumsum of (1-y), but shifted right by 1 position (prepend 0)
+        avoid_cumsum = pt.cumsum(1 - y, axis=1)  # cumsum along trials
+        n_avoid = pt.concatenate([pt.zeros((n_dogs, 1)), avoid_cumsum[:, :-1]], axis=1)
         
-        # Compute logit probabilities
+        # For shock: cumsum of y, but shifted right by 1 position (prepend 0)  
+        shock_cumsum = pt.cumsum(y, axis=1)  # cumsum along trials
+        n_shock = pt.concatenate([pt.zeros((n_dogs, 1)), shock_cumsum[:, :-1]], axis=1)
+        
+        # Compute probabilities (logit scale)
         p = beta[0] + beta[1] * n_avoid + beta[2] * n_shock
         
-        # Use Bernoulli with observed data
-        pm.Bernoulli("y", logit_p=p, observed=y_data)
-        
-        # Add correction for the observed constant offset
-        pm.Potential("stan_normalization_correction", pt.constant(16.572327))
+        # Likelihood
+        y_obs = pm.Bernoulli("y", logit_p=p, observed=y)
 
     return model

@@ -1,30 +1,35 @@
-def make_model(data: dict) -> pm.Model:
+def make_model(data: dict):
     """PyMC model transpiled from Stan."""
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-
-    # Extract data and ensure numpy arrays
-    N = data['N']
-    partyid7 = np.asarray(data['partyid7'], dtype=float)
-    real_ideo = np.asarray(data['real_ideo'], dtype=float)
-    race_adj = np.asarray(data['race_adj'], dtype=float)
-    educ1 = np.asarray(data['educ1'], dtype=float)
-    gender = np.asarray(data['gender'], dtype=float)
-    income = np.asarray(data['income'], dtype=float)
-    age_discrete = np.asarray(data['age_discrete'])
     
-    # Transformed data: create age indicator variables
-    age30_44 = np.array(age_discrete == 2, dtype=float)
-    age45_64 = np.array(age_discrete == 3, dtype=float)
-    age65up = np.array(age_discrete == 4, dtype=float)
-
+    # Extract data
+    N = data['N']
+    partyid7 = data['partyid7']
+    real_ideo = data['real_ideo']
+    race_adj = data['race_adj']
+    educ1 = data['educ1']
+    gender = data['gender']
+    income = data['income']
+    age_discrete = data['age_discrete']
+    
+    # Transformed data - create age group dummy variables
+    age30_44 = np.zeros(N)
+    age45_64 = np.zeros(N)
+    age65up = np.zeros(N)
+    
+    for n in range(N):
+        age30_44[n] = float(age_discrete[n] == 2)
+        age45_64[n] = float(age_discrete[n] == 3)
+        age65up[n] = float(age_discrete[n] == 4)
+    
     with pm.Model() as model:
-        # Parameters - no priors specified in Stan, so use flat priors
+        # Parameters - using flat priors as in Stan (no explicit priors given)
         beta = pm.Flat("beta", shape=9)
         sigma = pm.HalfFlat("sigma")
         
-        # Model: vectorized linear regression
+        # Linear predictor
         mu = (beta[0] + 
               beta[1] * real_ideo + 
               beta[2] * race_adj +
@@ -36,12 +41,6 @@ def make_model(data: dict) -> pm.Model:
               beta[8] * income)
         
         # Likelihood
-        partyid7_obs = pm.Normal("partyid7", mu=mu, sigma=sigma, observed=partyid7)
+        y_obs = pm.Normal("partyid7", mu=mu, sigma=sigma, observed=partyid7)
         
-        # Stan uses proportional densities, so we need to remove the normalization constants
-        # For N normal distributions, the normalization constant is N * log(sqrt(2*pi))
-        # For HalfFlat, we need to remove log(2)
-        pm.Potential("stan_normalization", 
-                     N * pt.log(pt.sqrt(2 * np.pi)) - pt.log(2.0))
-
     return model

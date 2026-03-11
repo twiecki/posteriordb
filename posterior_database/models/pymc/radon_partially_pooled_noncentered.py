@@ -4,26 +4,24 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
 
+    # Extract data
+    N = data['N']
+    J = data['J'] 
+    county_idx = np.array(data['county_idx']) - 1  # Convert from 1-based to 0-based indexing
+    log_radon = data['log_radon']
+
     with pm.Model() as model:
-        # Convert 1-based county indices to 0-based
-        county_idx = np.array(data['county_idx']) - 1
-        
-        # Parameters
-        alpha_raw = pm.Normal("alpha_raw", mu=0, sigma=1, shape=data['J'])
+        # Priors
+        alpha_raw = pm.Normal("alpha_raw", mu=0, sigma=1, shape=J)
         mu_alpha = pm.Normal("mu_alpha", mu=0, sigma=10)
-        # Use TruncatedNormal to match Stan's normal(0,1) with <lower=0>
-        sigma_alpha = pm.TruncatedNormal("sigma_alpha", mu=0, sigma=1, lower=0)
-        sigma_y = pm.TruncatedNormal("sigma_y", mu=0, sigma=1, lower=0)
+        sigma_alpha = pm.HalfNormal("sigma_alpha", sigma=1)
+        sigma_y = pm.HalfNormal("sigma_y", sigma=1)
         
-        # Transformed parameter: non-centered parameterization
+        # Transformed parameters (non-centered parameterization)
         alpha = pm.Deterministic("alpha", mu_alpha + sigma_alpha * alpha_raw)
         
-        # Likelihood - vectorized
+        # Likelihood
         mu = alpha[county_idx]
-        log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, 
-                                 observed=data['log_radon'])
-        
-        # Constant adjustment to match Stan's unnormalized posteriors
-        pm.Potential("stan_match_adjustment", pt.constant(357.0))
+        y_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
 
     return model

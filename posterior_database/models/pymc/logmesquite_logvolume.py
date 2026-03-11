@@ -3,28 +3,27 @@ def make_model(data: dict) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-
-    # Extract data
-    N = data['N']
-    weight = np.array(data['weight'])
-    diam1 = np.array(data['diam1'])
-    diam2 = np.array(data['diam2'])
-    canopy_height = np.array(data['canopy_height'])
+    
+    # Extract and ensure data is numpy arrays
+    weight = np.asarray(data['weight'], dtype=float)
+    diam1 = np.asarray(data['diam1'], dtype=float)  
+    diam2 = np.asarray(data['diam2'], dtype=float)
+    canopy_height = np.asarray(data['canopy_height'], dtype=float)
     
     # Transformed data
     log_weight = np.log(weight)
     log_canopy_volume = np.log(diam1 * diam2 * canopy_height)
 
     with pm.Model() as model:
-        # Parameters
+        # Parameters - Stan has no explicit priors, so using flat priors
         beta = pm.Flat("beta", shape=2)
         sigma = pm.HalfFlat("sigma")
         
-        # Model
+        # Linear model: beta[1] + beta[2] * log_canopy_volume  
+        # Note: Stan indexing beta[1], beta[2] -> Python beta[0], beta[1]
         mu = beta[0] + beta[1] * log_canopy_volume
-        log_weight_obs = pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
         
-        # Add constant to match Stan's normalization
-        pm.Potential("normalization_constant", pt.constant(42.271172))
+        # Likelihood
+        pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
 
     return model

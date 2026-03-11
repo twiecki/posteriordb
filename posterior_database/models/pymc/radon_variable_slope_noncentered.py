@@ -5,32 +5,27 @@ def make_model(data: dict) -> pm.Model:
     import numpy as np
 
     with pm.Model() as model:
-        # Extract data
+        # Extract data and ensure numpy arrays
         N = data['N']
-        J = data['J']
-        county_idx = np.array(data['county_idx']) - 1  # Convert to 0-based indexing
+        J = data['J'] 
+        county_idx = np.array(data['county_idx']) - 1  # Convert 1-based to 0-based indexing
         floor_measure = np.array(data['floor_measure'])
         log_radon = np.array(data['log_radon'])
         
-        # Parameters (match Stan exactly)
+        # Parameters
         alpha = pm.Normal("alpha", mu=0, sigma=10)
+        
+        # Non-centered parameterization for hierarchical effects
         beta_raw = pm.Normal("beta_raw", mu=0, sigma=1, shape=J)
         mu_beta = pm.Normal("mu_beta", mu=0, sigma=10)
+        sigma_beta = pm.HalfNormal("sigma_beta", sigma=1)
+        sigma_y = pm.HalfNormal("sigma_y", sigma=1)
         
-        # For positive parameters, match Stan's truncated normal exactly
-        sigma_beta = pm.TruncatedNormal("sigma_beta", mu=0, sigma=1, lower=0)
-        sigma_y = pm.TruncatedNormal("sigma_y", mu=0, sigma=1, lower=0)
-        
-        # Transform to centered parameterization (this is just a deterministic transformation)
-        beta = mu_beta + sigma_beta * beta_raw
-        
-        # Linear predictor
-        mu = alpha + floor_measure * beta[county_idx]
+        # Transformed parameters
+        beta = pm.Deterministic("beta", mu_beta + sigma_beta * beta_raw)
         
         # Likelihood
-        y_obs = pm.Normal("y", mu=mu, sigma=sigma_y, observed=log_radon)
-        
-        # Add normalizing constant to match Stan exactly
-        pm.Potential("stan_adjustment", pt.constant(85.004405))
+        mu = alpha + floor_measure * beta[county_idx]
+        log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
 
     return model

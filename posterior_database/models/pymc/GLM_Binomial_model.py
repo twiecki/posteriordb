@@ -7,10 +7,10 @@ def make_model(data: dict) -> pm.Model:
     # Extract data and ensure they are numpy arrays
     nyears = data['nyears']
     C = np.array(data['C'])
-    N = np.array(data['N'])
+    N = np.array(data['N']) 
     year = np.array(data['year'])
     
-    # Transformed data (compute year_squared)
+    # Transformed data
     year_squared = year * year
     
     with pm.Model() as model:
@@ -19,22 +19,13 @@ def make_model(data: dict) -> pm.Model:
         beta1 = pm.Normal("beta1", mu=0, sigma=100)
         beta2 = pm.Normal("beta2", mu=0, sigma=100)
         
-        # Transformed parameters (linear predictor)
+        # Transformed parameters - linear predictor
         logit_p = alpha + beta1 * year + beta2 * year_squared
         
-        # Likelihood - binomial with logit parameterization
+        # Likelihood using binomial_logit
         C_obs = pm.Binomial("C", n=N, logit_p=logit_p, observed=C)
         
-        # PyMC excludes binomial coefficients, but Stan includes them
-        # Need to subtract them to match Stan: -log(choose(N,C))
-        log_binom_coeff = (
-            pt.sum(pt.gammaln(N + 1)) - 
-            pt.sum(pt.gammaln(C + 1)) - 
-            pt.sum(pt.gammaln(N - C + 1))
-        )
-        pm.Potential("binom_coeff", -log_binom_coeff)
-        
-        # Generated quantities (deterministic transformation)
+        # Generated quantities
         p = pm.Deterministic("p", pm.math.invlogit(logit_p))
     
     return model

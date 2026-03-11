@@ -5,37 +5,32 @@ def make_model(data: dict) -> pm.Model:
     import numpy as np
 
     with pm.Model() as model:
-        # Extract data
+        # Extract data and convert to numpy arrays
         N = data['N']
         Npts = data['Npts']
-        rat = np.array(data['rat']) - 1  # Convert 1-based indexing to 0-based
+        rat = np.array(data['rat']) - 1  # Convert from 1-based to 0-based indexing
         x = np.array(data['x'])
         y = np.array(data['y'])
         xbar = data['xbar']
         
-        # Parameters
-        # Hierarchical priors
+        # Prior parameters
         mu_alpha = pm.Normal("mu_alpha", mu=0, sigma=100)
         mu_beta = pm.Normal("mu_beta", mu=0, sigma=100)
         
-        # Flat priors on sigmas (positive constrained)
+        # Variance parameters (flat priors as commented in Stan)
         sigma_y = pm.HalfFlat("sigma_y")
-        sigma_alpha = pm.HalfFlat("sigma_alpha") 
+        sigma_alpha = pm.HalfFlat("sigma_alpha")
         sigma_beta = pm.HalfFlat("sigma_beta")
         
-        # Individual rat parameters (vectorized)
+        # Rat-specific parameters
         alpha = pm.Normal("alpha", mu=mu_alpha, sigma=sigma_alpha, shape=N)
         beta = pm.Normal("beta", mu=mu_beta, sigma=sigma_beta, shape=N)
         
         # Likelihood - vectorized instead of loop
-        # y[n] ~ normal(alpha[rat[n]] + beta[rat[n]] * (x[n] - xbar), sigma_y)
         mu_y = alpha[rat] + beta[rat] * (x - xbar)
         y_obs = pm.Normal("y", mu=mu_y, sigma=sigma_y, observed=y)
         
-        # Generated quantities
+        # Generated quantity
         alpha0 = pm.Deterministic("alpha0", mu_alpha - xbar * mu_beta)
-        
-        # Correction for HalfFlat distributions (3 of them)
-        pm.Potential("half_dist_correction", -3 * pt.log(2.0))
 
     return model

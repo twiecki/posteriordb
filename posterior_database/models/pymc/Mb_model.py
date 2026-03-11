@@ -3,75 +3,72 @@ def make_model(data: dict) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-    
+
     # Extract data
-    y_data = data['y']  # Shape [M, T] - numpy array
-    M = data['M'] 
-    T = data['T']
-    
-    # Transformed data (compute before model)
-    s = np.sum(y_data, axis=1)  # Row sums
-    observed_mask = s > 0  # Boolean mask for observed individuals
-    
+    y = data['y']  # [M, T] capture history matrix
+    M = data['M']  # Number of individuals in augmented dataset
+    T = data['T']  # Number of sampling occasions
+
+    # Transformed data - compute row sums and observed count
+    s = np.sum(y, axis=1)  # Row sums
+    C = np.sum(s > 0)  # Number of individuals ever captured
+
     with pm.Model() as model:
-        # Convert data to pytensor constant
-        y = pt.as_tensor_variable(y_data)
+        # Parameters (uniform priors on [0,1])
+        omega = pm.Uniform("omega", lower=0, upper=1)  # Inclusion probability
+        p = pm.Uniform("p", lower=0, upper=1)  # Capture prob (not captured before)
+        c = pm.Uniform("c", lower=0, upper=1)  # Capture prob (captured before)
         
-        # Parameters with uniform priors (implicit in Stan)
-        omega = pm.Uniform("omega", lower=0, upper=1)
-        p = pm.Uniform("p", lower=0, upper=1)
-        c = pm.Uniform("c", lower=0, upper=1)
+        # Transformed parameters: effective capture probabilities
+        # p_eff[i,j] = p if not captured on j-1, c if captured on j-1
         
-        # Compute effective capture probabilities
-        # Initialize with first occasion probabilities (all p)
-        p_eff = pt.zeros((M, T))
-        p_eff = pt.set_subtensor(p_eff[:, 0], p)
+        # Convert y to tensor for computation
+        y_tensor = pt.as_tensor_variable(y)
         
-        # For subsequent occasions, compute iteratively
-        for j in range(1, T):
-            # p_eff[i,j] = (1 - y[i,j-1]) * p + y[i,j-1] * c
-            p_eff_j = (1.0 - y[:, j-1]) * p + y[:, j-1] * c
-            p_eff = pt.set_subtensor(p_eff[:, j], p_eff_j)
+        # Compute p_eff for all individuals and occasions
+        p_eff_list = []
         
-        # Custom likelihood
-        logp_components = []
-        
-        # For each individual
         for i in range(M):
-            if observed_mask[i]:
-                # Individual was observed: z[i] = 1
-                logp_omega = pt.log(omega)
-                # Bernoulli log pmf for capture history
-                y_i = y[i, :]  # Individual i's capture history
-                p_eff_i = p_eff[i, :]  # Individual i's effective probabilities
-                logp_captures = pt.sum(y_i * pt.log(p_eff_i) + (1 - y_i) * pt.log(1 - p_eff_i))
-                logp_components.append(logp_omega + logp_captures)
+            p_eff_i = []
+            # First occasion: always p
+            p_eff_i.append(p)
+            
+            # Subsequent occasions: depend on previous capture
+            for j in range(1, T):
+                # p_eff[i,j] = (1 - y[i,j-1]) * p + y[i,j-1] * c
+                p_eff_ij = (1 - y_tensor[i, j-1]) * p + y_tensor[i, j-1] * c
+                p_eff_i.append(p_eff_ij)
+            
+            p_eff_list.append(pt.stack(p_eff_i))
+        
+        p_eff = pt.stack(p_eff_list)  # [M, T] tensor
+        
+        # Likelihood
+        # For each individual, marginalize over latent presence (z[i])
+        logp_contributions = []
+        
+        for i in range(M):
+            if s[i] > 0:
+                # Individual was captured at least once: z[i] = 1 with certainty
+                # log P(z[i]=1) + log P(y[i] | z[i]=1, p_eff[i])
+                logp_z1 = pt.log(omega)
+                logp_y_given_z1 = pm.Bernoulli.logp(y_tensor[i], p_eff[i]).sum()
+                logp_contributions.append(logp_z1 + logp_y_given_z1)
             else:
-                # Individual never observed: marginalize over z[i]
-                y_i = y[i, :]
-                p_eff_i = p_eff[i, :]
-                
-                # Case z[i] = 1: individual present
-                logp_z1 = pt.log(omega) + pt.sum(y_i * pt.log(p_eff_i) + (1 - y_i) * pt.log(1 - p_eff_i))
-                
-                # Case z[i] = 0: individual absent
-                logp_z0 = pt.log(1 - omega)
-                
-                # log_sum_exp(logp_z1, logp_z0)
-                max_logp = pt.maximum(logp_z1, logp_z0)
-                log_sum_exp = max_logp + pt.log(pt.exp(logp_z1 - max_logp) + pt.exp(logp_z0 - max_logp))
-                logp_components.append(log_sum_exp)
+                # Individual never captured: marginalize over z[i]
+                # log[P(z[i]=1) * P(y[i]=0 | z[i]=1) + P(z[i]=0)]
+                logp_z1 = pt.log(omega)
+                logp_y_given_z1 = pm.Bernoulli.logp(y_tensor[i], p_eff[i]).sum()
+                logp_case1 = logp_z1 + logp_y_given_z1  # z[i]=1 case
+                logp_case2 = pt.log(1 - omega)  # z[i]=0 case
+                logp_contributions.append(pm.math.logsumexp(pt.stack([logp_case1, logp_case2])))
         
-        # Sum all log probability components
-        total_logp = pt.sum(pt.stack(logp_components))
-        pm.Potential("likelihood", total_logp)
+        # Add all contributions to the model
+        pm.Potential("likelihood", pt.sum(pt.stack(logp_contributions)))
         
-        # Generated quantities (deterministic transformations)
-        omega_nd = pm.Deterministic(
-            "omega_nd",
-            (omega * (1 - p) ** T) / (omega * (1 - p) ** T + (1 - omega))
-        )
-        
+        # Generated quantities
+        omega_nd = pm.Deterministic("omega_nd", 
+                                  (omega * (1 - p)**T) / (omega * (1 - p)**T + (1 - omega)))
         trap_response = pm.Deterministic("trap_response", c - p)
-    
+
     return model

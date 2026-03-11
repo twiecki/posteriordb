@@ -4,113 +4,112 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
 
+    # Extract data
+    J = data['J']  # sites within region
+    K = data['K']  # visits to sites  
+    n = data['n']  # observed species
+    X = np.array(data['X'])  # Convert to numpy array to ensure proper indexing
+    S = data['S']  # superpopulation size
+
     with pm.Model() as model:
-        # Extract data
-        J = data['J']  # sites within region
-        K = data['K']  # visits to sites  
-        n = data['n']  # observed species
-        X = np.array(data['X'])  # visits when species i was detected at site j
-        S = data['S']  # superpopulation size
         
-        # Parameters
-        alpha = pm.Cauchy("alpha", alpha=0, beta=2.5)  # site-level occupancy
-        beta = pm.Cauchy("beta", alpha=0, beta=2.5)   # site-level detection
-        Omega = pm.Beta("Omega", alpha=2, beta=2)     # availability of species
+        # Priors
+        alpha = pm.Cauchy("alpha", alpha=0, beta=2.5)
+        beta = pm.Cauchy("beta", alpha=0, beta=2.5)
         
-        # Correlation parameter with special prior: (rho_uv + 1)/2 ~ beta(2, 2)
+        # Availability probability
+        Omega = pm.Beta("Omega", alpha=2, beta=2)
+        
+        # Correlation parameter: (rho_uv + 1) / 2 ~ beta(2, 2)
         rho_uv_scaled = pm.Beta("rho_uv_scaled", alpha=2, beta=2)
         rho_uv = pm.Deterministic("rho_uv", 2 * rho_uv_scaled - 1)
         
-        # Scale parameters
+        # Standard deviations for bivariate normal
         sigma_uv = pm.HalfCauchy("sigma_uv", beta=2.5, shape=2)
         
-        # Species-level random effects 
-        # Stan declares these as vector[S] uv1, vector[S] uv2, then applies MVN structure
+        # Species-level random effects as separate vectors (matching Stan)
         uv1 = pm.Normal("uv1", mu=0, sigma=1, shape=S)
         uv2 = pm.Normal("uv2", mu=0, sigma=1, shape=S)
         
-        # Apply multivariate normal structure via potential
-        # Stan: target += multi_normal_lpdf(uv | rep_vector(0, 2), cov_matrix_2d(sigma_uv, rho_uv))
-        mvn_potential = 0.0
+        # Build covariance matrix components
+        Sigma_11 = sigma_uv[0]**2
+        Sigma_22 = sigma_uv[1]**2  
+        Sigma_12 = sigma_uv[0] * sigma_uv[1] * rho_uv
         
+        # Add the multivariate normal constraint
+        # The Stan model does: target += multi_normal_lpdf(uv | rep_vector(0, 2), cov_matrix_2d(...))
+        # where uv[i] = [uv1[i], uv2[i]] for each i
+        
+        det_Sigma = Sigma_11 * Sigma_22 - Sigma_12**2
+        inv_Sigma_11 = Sigma_22 / det_Sigma
+        inv_Sigma_12 = -Sigma_12 / det_Sigma  
+        inv_Sigma_22 = Sigma_11 / det_Sigma
+        
+        mvn_logp = 0.0
         for i in range(S):
-            # For each species i, we have [uv1[i], uv2[i]] ~ MVN(0, Sigma)
-            # where Sigma = [[sigma1^2, rho*sigma1*sigma2], [rho*sigma1*sigma2, sigma2^2]]
+            u1_i = uv1[i]
+            u2_i = uv2[i] 
             
-            u1 = uv1[i]
-            u2 = uv2[i] 
+            # Quadratic form: u^T Sigma^{-1} u
+            quad_form = (u1_i * inv_Sigma_11 * u1_i + 
+                        2 * u1_i * inv_Sigma_12 * u2_i +
+                        u2_i * inv_Sigma_22 * u2_i)
             
-            # Covariance matrix elements
-            var1 = sigma_uv[0]**2
-            var2 = sigma_uv[1]**2
-            cov12 = rho_uv * sigma_uv[0] * sigma_uv[1]
+            # Log determinant term
+            log_det_term = 0.5 * pt.log(det_Sigma)
             
-            # Determinant and inverse
-            det_sigma = var1 * var2 - cov12**2
-            inv_11 = var2 / det_sigma
-            inv_22 = var1 / det_sigma
-            inv_12 = -cov12 / det_sigma
-            
-            # Quadratic form
-            quad_form = inv_11 * u1**2 + inv_22 * u2**2 + 2 * inv_12 * u1 * u2
-            
-            # MVN log density
-            mvn_potential += -0.5 * quad_form - 0.5 * pt.log(det_sigma) - np.log(2 * np.pi)
-            
-            # Subtract the standard normal densities that are already counted
-            mvn_potential -= -0.5 * u1**2 - 0.5 * np.log(2 * np.pi)
-            mvn_potential -= -0.5 * u2**2 - 0.5 * np.log(2 * np.pi)
+            mvn_logp += -0.5 * quad_form - log_det_term - np.log(2 * np.pi)
         
-        pm.Potential("mvn_structure", mvn_potential)
+        # Subtract the independent normal contributions we already included
+        independent_logp = pt.sum(pm.Normal.logp(uv1, mu=0, sigma=1)) + pt.sum(pm.Normal.logp(uv2, mu=0, sigma=1))
+        pm.Potential("mvn_correction", mvn_logp - independent_logp)
         
-        # Transformed parameters - match Stan exactly
-        logit_psi = uv1 + alpha  # Stan: logit_psi[i] = uv[i, 1] + alpha
-        logit_theta = uv2 + beta  # Stan: logit_theta[i] = uv[i, 2] + beta
+        # Transformed parameters
+        logit_psi = pm.Deterministic("logit_psi", uv1 + alpha)
+        logit_theta = pm.Deterministic("logit_theta", uv2 + beta)
         
-        # Likelihood components
+        # Convert logits to probabilities for use in binomial
+        psi = pm.math.invlogit(logit_psi)
+        theta = pm.math.invlogit(logit_theta)
+        
+        # Likelihood computation
         total_logp = 0.0
         
-        # Helper functions
-        def log_inv_logit(x):
-            return x - pt.log1p(pt.exp(x))
-        
-        def log1m_inv_logit(x):
-            return -pt.log1p(pt.exp(x))
-        
-        def binomial_logit_lpmf(k, n_trials, logit_p):
-            # binomial(k | n, p) with p = invlogit(logit_p)
-            return (k * logit_p - n_trials * pt.log1p(pt.exp(logit_p)) +
-                   pt.gammaln(n_trials + 1) - pt.gammaln(k + 1) - pt.gammaln(n_trials - k + 1))
-        
-        def lp_observed(x_val, k_val, logit_psi_val, logit_theta_val):
-            return log_inv_logit(logit_psi_val) + binomial_logit_lpmf(x_val, k_val, logit_theta_val)
-        
-        def lp_unobserved(k_val, logit_psi_val, logit_theta_val):
-            lp_obs_0 = lp_observed(0, k_val, logit_psi_val, logit_theta_val)
-            lp_not_psi = log1m_inv_logit(logit_psi_val)
-            return pm.math.logaddexp(lp_obs_0, lp_not_psi)
-        
-        # Observed species likelihood
+        # For observed species (indices 0 to n-1)
         for i in range(n):
-            # 1 ~ bernoulli(Omega) - observed species are available
-            total_logp += pt.log(Omega)
+            # Species i is available
+            total_logp += pm.Bernoulli.logp(1, p=Omega)
             
+            # For each site
             for j in range(J):
-                x_ij = X[i, j]
-                if x_ij > 0:
-                    total_logp += lp_observed(x_ij, K, logit_psi[i], logit_theta[i])
+                X_ij = X[i, j]
+                if X_ij > 0:
+                    # lp_observed: log(psi) + binomial_logit_lpmf(X | K, logit_theta)
+                    total_logp += (pt.log(psi[i]) + 
+                                 pm.Binomial.logp(X_ij, n=K, p=theta[i]))
                 else:
-                    total_logp += lp_unobserved(K, logit_psi[i], logit_theta[i])
+                    # lp_unobserved: log_sum_exp(lp_observed(0, ...), log1m_inv_logit(logit_psi))
+                    lp_obs_zero = pt.log(psi[i]) + pm.Binomial.logp(0, n=K, p=theta[i])
+                    lp_not_present = pt.log(1 - psi[i])  # log1m_inv_logit(logit_psi)
+                    total_logp += pm.math.logsumexp(pt.stack([lp_obs_zero, lp_not_present]))
         
-        # Never observed species likelihood  
+        # For never observed species (indices n to S-1) 
         for i in range(n, S):
-            lp_unavailable = pt.log(1 - Omega)  # bernoulli_lpmf(0 | Omega)
-            lp_available = pt.log(Omega) + J * lp_unobserved(K, logit_psi[i], logit_theta[i])
-            total_logp += pm.math.logaddexp(lp_unavailable, lp_available)
+            # lp_never_observed
+            lp_unavailable = pm.Bernoulli.logp(0, p=Omega)
+            
+            # Compute lp_unobserved for this species
+            lp_obs_zero_i = pt.log(psi[i]) + pm.Binomial.logp(0, n=K, p=theta[i])
+            lp_not_present_i = pt.log(1 - psi[i])
+            lp_unobs_i = pm.math.logsumexp(pt.stack([lp_obs_zero_i, lp_not_present_i]))
+            
+            lp_available = pm.Bernoulli.logp(1, p=Omega) + J * lp_unobs_i
+            total_logp += pm.math.logsumexp(pt.stack([lp_unavailable, lp_available]))
         
+        # Add likelihood
         pm.Potential("likelihood", total_logp)
         
-        # Add correction for HalfCauchy distributions
-        pm.Potential("half_dist_correction", -2 * pt.log(2.0))
-    
+        # Derived quantities
+        E_N = pm.Deterministic("E_N", S * Omega)
+
     return model

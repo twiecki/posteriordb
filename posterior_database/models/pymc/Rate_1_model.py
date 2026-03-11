@@ -3,22 +3,14 @@ def make_model(data: dict) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-    
-    # Extract data
-    n = data['n']
-    k = data['k']
-    
+
     with pm.Model() as model:
-        # Manual implementation to match Stan exactly
-        theta_unconstrained = pm.Flat("theta")
-        theta = pm.math.invlogit(theta_unconstrained)
-        
-        # Add the Jacobian for the logit transform plus any normalization
-        # The difference suggests we need to add about -5.5 
-        jacobian_adj = pt.log(theta) + pt.log(1 - theta) - 5.529429
-        pm.Potential("jacobian_and_norm", jacobian_adj)
+        # Prior Distribution for Rate Theta
+        # Stan: theta ~ beta(1, 1) with bounds [0,1]
+        theta = pm.Beta("theta", alpha=1, beta=1)
         
         # Observed Counts
-        k_obs = pm.Binomial("k", n=n, p=theta, observed=k)
-    
+        # Stan: k ~ binomial(n, theta)
+        k_obs = pm.Binomial("k", n=data['n'], p=theta, observed=data['k'])
+
     return model

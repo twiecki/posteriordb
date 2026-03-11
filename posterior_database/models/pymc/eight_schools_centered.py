@@ -7,23 +7,20 @@ def make_model(data: dict) -> pm.Model:
     with pm.Model() as model:
         # Extract data
         J = data['J']
-        y_obs = data['y']
-        sigma_data = data['sigma']
+        y = data['y']
+        sigma = data['sigma']
         
         # Parameters
+        # tau ~ cauchy(0, 5) with lower bound 0 -> HalfCauchy
+        tau = pm.HalfCauchy("tau", beta=5)
+        
         # mu ~ normal(0, 5)
         mu = pm.Normal("mu", mu=0, sigma=5)
-        
-        # tau ~ cauchy(0, 5) with lower bound 0
-        tau = pm.HalfCauchy("tau", beta=5)
         
         # theta ~ normal(mu, tau) - hierarchical parameters
         theta = pm.Normal("theta", mu=mu, sigma=tau, shape=J)
         
-        # Likelihood: y ~ normal(theta, sigma)
-        y = pm.Normal("y", mu=theta, sigma=sigma_data, observed=y_obs)
-        
-        # Correction for HalfCauchy log(2) offset to match Stan exactly
-        pm.Potential("half_dist_correction", -pt.log(2.0))
-        
+        # y ~ normal(theta, sigma) - likelihood
+        y_obs = pm.Normal("y", mu=theta, sigma=sigma, observed=y)
+
     return model

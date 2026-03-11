@@ -3,29 +3,26 @@ def make_model(data: dict) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-
-    # Extract data and convert to numpy arrays
-    N = data['N']
-    earn = np.array(data['earn'], dtype=float)
-    height = np.array(data['height'], dtype=float)
     
-    # Transformed data - log transformation
+    # Extract data
+    N = data['N']
+    earn = data['earn']
+    height = data['height']
+    
+    # Transformed data: log transformation (matching Stan's transformed data block)
     log_earn = np.log(earn)
-
+    
     with pm.Model() as model:
         # Parameters
+        # beta is a vector[2] in Stan - no explicit prior means improper uniform
         beta = pm.Flat("beta", shape=2)
+        
+        # sigma is real<lower=0> - no explicit prior means improper uniform on (0, inf)
         sigma = pm.HalfFlat("sigma")
         
-        # Linear predictor
+        # Model: log_earn ~ normal(beta[1] + beta[2] * height, sigma)
+        # Note: Stan uses 1-based indexing, so beta[1] is beta[0] and beta[2] is beta[1] in Python
         mu = beta[0] + beta[1] * height
-        
-        # Likelihood: log_earn ~ normal(mu, sigma)
         log_earn_obs = pm.Normal("log_earn", mu=mu, sigma=sigma, observed=log_earn)
-        
-        # Add constant term to match Stan's normalization
-        # The difference is approximately 1095.37, which is close to N * log(2*pi)/2
-        # where N=1192, so N * log(2*pi)/2 ≈ 1192 * 0.9189 ≈ 1095
-        pm.Potential("normalizing_constant", N * 0.5 * pt.log(2 * np.pi))
-
+    
     return model

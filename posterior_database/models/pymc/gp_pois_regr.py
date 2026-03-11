@@ -4,44 +4,30 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
     
+    N = data['N']
+    x = np.array(data['x'], dtype=float)
+    k = np.array(data['k'])
+    
     with pm.Model() as model:
-        # Extract data
-        N = data['N']
-        x = np.array(data['x'], dtype=float)
-        k = np.array(data['k'])
-        
-        # Parameters with proper constraints
+        # Parameters
         rho = pm.Gamma("rho", alpha=25, beta=4)
-        
-        # For alpha: real<lower=0> with normal(0, 2) prior
-        # This is equivalent to a HalfNormal but with log(2) offset
-        alpha = pm.HalfNormal("alpha", sigma=2)
-        # Add correction for the log(2) offset
-        pm.Potential("half_normal_correction", -pt.log(2.0))
-        
+        alpha = pm.HalfNormal("alpha", sigma=2)  # alpha is constrained to be positive
         f_tilde = pm.Normal("f_tilde", mu=0, sigma=1, shape=N)
         
-        # Transformed parameters
-        # Convert x to tensor
-        x_tensor = pt.as_tensor_variable(x)
+        # Transformed parameters - GP computation
+        # Compute squared distances between all pairs of x values
+        x_diff = x[:, None] - x[None, :]  # Shape: (N, N)
+        sq_distances = x_diff**2
         
-        # Compute GP covariance matrix using Stan's gp_exp_quad_cov parameterization
-        x_diff = x_tensor[:, None] - x_tensor[None, :]  # Broadcasting to get all pairwise differences
+        # Stan's gp_exp_quad_cov uses: alpha^2 * exp(-0.5 * d^2 / rho^2)
+        # where d is the distance between points
+        cov = alpha**2 * pt.exp(-0.5 * sq_distances / rho**2) + pt.eye(N) * 1e-10
         
-        # Stan's gp_exp_quad_cov: alpha^2 * exp(-0.5 * sqdist / rho^2)
-        sqdist = x_diff ** 2
-        cov = alpha**2 * pt.exp(-0.5 * sqdist / rho**2)
-        
-        # Add jitter for numerical stability
-        cov = cov + pt.eye(N) * 1e-10
-        
-        # Cholesky decomposition
+        # Cholesky decomposition and non-centered parameterization
         L_cov = pt.linalg.cholesky(cov)
-        
-        # Transform f_tilde to get f
         f = pm.Deterministic("f", pt.dot(L_cov, f_tilde))
         
-        # Likelihood - Stan uses poisson_log which means log-parameterization
+        # Likelihood - Stan uses poisson_log which is Poisson with log link
         k_obs = pm.Poisson("k", mu=pt.exp(f), observed=k)
-    
+        
     return model

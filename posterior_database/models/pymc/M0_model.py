@@ -1,53 +1,49 @@
-def make_model(data: dict) -> pm.Model:
+def make_model(data: dict):
     """PyMC model transpiled from Stan."""
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
 
     # Extract data
-    y = data['y']  # shape [M, T]
     M = data['M']
-    T = data['T']
+    T = data['T'] 
+    y = data['y']
     
-    # Transformed data (compute row sums and observed count)
-    s = np.sum(y, axis=1)  # sum across columns for each row
-    C = np.sum(s > 0)  # count of individuals with at least one capture
+    # Transformed data computations
+    s = np.sum(y, axis=1)  # Totals in each row
+    C = np.sum(s > 0)  # Size of observed data set
     
     with pm.Model() as model:
-        # Parameters with uniform priors (implicit in Stan)
+        # Parameters with implicit uniform priors
         omega = pm.Uniform("omega", lower=0, upper=1)  # Inclusion probability
         p = pm.Uniform("p", lower=0, upper=1)  # Detection probability
         
-        # Likelihood using custom potential
-        # For each individual i, we have a mixture:
-        # - If s[i] > 0: individual was observed, so z[i]=1 with prob omega, 
-        #   and s[i] captures ~ binomial(T, p)
-        # - If s[i] == 0: either z[i]=1 with no captures, or z[i]=0
-        
-        logp_contributions = []
+        # Likelihood - marginalized over latent z
+        loglik_terms = []
         
         for i in range(M):
             if s[i] > 0:
-                # Individual was observed: z[i] = 1
-                # log P(z[i]=1) + log P(s[i] | z[i]=1, T, p)
-                # Use the binomial log probability manually
-                log_binom_coeff = pt.gammaln(T + 1) - pt.gammaln(s[i] + 1) - pt.gammaln(T - s[i] + 1)
-                contrib = (pt.log(omega) + 
-                          log_binom_coeff + s[i] * pt.log(p) + (T - s[i]) * pt.log(1 - p))
-            else:
-                # Individual not observed: could be z[i]=1 with no captures or z[i]=0
-                # log P(s[i]=0) = log[P(z[i]=1) * P(s[i]=0|z[i]=1) + P(z[i]=0)]
-                log_prob_present_not_detected = pt.log(omega) + T * pt.log(1 - p)
-                log_prob_absent = pt.log(1 - omega)
-                contrib = pm.math.logsumexp(pt.stack([log_prob_present_not_detected, log_prob_absent]))
+                # z[i] == 1 case
+                # bernoulli_lpmf(1 | omega) + binomial_lpmf(s[i] | T, p)
+                loglik_i = (pt.log(omega) + 
+                           pm.Binomial.logp(s[i], n=T, p=p))
+            else:  # s[i] == 0
+                # Log-sum-exp over z[i] == 1 and z[i] == 0
+                # Case z[i] == 1: bernoulli_lpmf(1 | omega) + binomial_lpmf(0 | T, p)
+                log_z1 = (pt.log(omega) + 
+                         pm.Binomial.logp(0, n=T, p=p))
+                # Case z[i] == 0: bernoulli_lpmf(0 | omega)
+                log_z0 = pt.log(1 - omega)
+                loglik_i = pm.math.logsumexp(pt.stack([log_z1, log_z0]))
             
-            logp_contributions.append(contrib)
+            loglik_terms.append(loglik_i)
         
-        # Add all contributions to the model
-        pm.Potential("likelihood", pt.sum(pt.stack(logp_contributions)))
+        # Add total likelihood
+        pm.Potential("likelihood", pt.sum(pt.stack(loglik_terms)))
         
         # Generated quantities
         omega_nd = pm.Deterministic("omega_nd", 
-                                   (omega * (1 - p)**T) / (omega * (1 - p)**T + (1 - omega)))
-        
+                                   (omega * (1 - p)**T) / 
+                                   (omega * (1 - p)**T + (1 - omega)))
+    
     return model

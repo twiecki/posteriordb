@@ -5,40 +5,53 @@ def make_model(data: dict) -> pm.Model:
     import numpy as np
     
     # Extract data
-    y = np.array(data['y'])  # shape [M, T]
+    y = data['y']  # shape (M, T)
     M = data['M']
     T = data['T']
     
-    # Transformed data - compute row sums and count observed individuals
-    s = np.sum(y, axis=1)  # row sums
-    C = np.sum(s > 0)  # count of observed individuals
-    
+    # Transformed data - compute totals for each individual
+    s = np.sum(y, axis=1)  # sum across time periods for each individual
+    C = np.sum(s > 0)  # number of individuals with at least one capture
+
     with pm.Model() as model:
         # Parameters with implicit uniform priors
-        omega = pm.Uniform("omega", lower=0, upper=1)
-        p = pm.Uniform("p", lower=0, upper=1, shape=T)
+        omega = pm.Uniform("omega", lower=0, upper=1)  # inclusion probability
+        p = pm.Uniform("p", lower=0, upper=1, shape=T)  # detection probabilities
         
         # Likelihood
-        # We'll handle each individual separately using pm.Potential
-        for i in range(M):
-            y_i = y[i]  # Get the capture history for individual i as numpy array
-            if s[i] > 0:
-                # Individual was captured at least once: z[i] = 1
-                # Log probability: log(omega) + sum(log(Bernoulli(y[i,t] | p[t])))
-                log_prob_zi_1 = pt.log(omega) + pt.sum(y_i * pt.log(p) + (1 - y_i) * pt.log(1 - p))
-                pm.Potential(f"likelihood_{i}", log_prob_zi_1)
-            else:
-                # Individual was never captured: mixture of z[i] = 0 and z[i] = 1
-                # z[i] = 1: log(omega) + sum(log(1-p)) (never detected but present)
-                log_prob_zi_1 = pt.log(omega) + pt.sum(pt.log(1 - p))
-                # z[i] = 0: log(1-omega) (not present)
-                log_prob_zi_0 = pt.log(1 - omega)
-                # Log-sum-exp of the two possibilities
-                log_prob = pt.logsumexp(pt.stack([log_prob_zi_1, log_prob_zi_0]))
-                pm.Potential(f"likelihood_{i}", log_prob)
+        # For individuals with s[i] > 0 (observed at least once)
+        observed_mask = s > 0
+        observed_indices = np.where(observed_mask)[0]
         
-        # Generated quantities as deterministic variables
-        pr = pm.Deterministic("pr", pt.prod(1 - p))
+        # For individuals with s[i] == 0 (never observed)
+        unobserved_mask = s == 0
+        unobserved_indices = np.where(unobserved_mask)[0]
+        
+        # Likelihood for observed individuals: z[i] = 1 (definitely present)
+        for i in observed_indices:
+            # bernoulli_lpmf(1 | omega) - this is just log(omega)
+            pm.Potential(f"omega_contrib_{i}", pt.log(omega))
+            
+            # bernoulli_lpmf(y[i] | p) - vectorized Bernoulli likelihood
+            pm.Bernoulli(f"y_obs_{i}", p=p, observed=y[i])
+        
+        # Likelihood for unobserved individuals: marginalize over z[i]
+        for i in unobserved_indices:
+            # log_sum_exp of two terms:
+            # Term 1: z[i] = 1, bernoulli_lpmf(1|omega) + bernoulli_lpmf(y[i]|p)
+            # Term 2: z[i] = 0, bernoulli_lpmf(0|omega)
+            
+            # y[i] is all zeros for unobserved individuals
+            # bernoulli_lpmf(y[i]|p) = sum(log(1-p)) when y[i] are all zeros
+            log_prob_y_given_present = pt.sum(pt.log(1 - p))
+            
+            term1 = pt.log(omega) + log_prob_y_given_present  # z[i] = 1
+            term2 = pt.log(1 - omega)  # z[i] = 0
+            
+            pm.Potential(f"unobs_contrib_{i}", pm.math.logsumexp(pt.stack([term1, term2])))
+        
+        # Generated quantities (as deterministics)
+        pr = pm.Deterministic("pr", pt.prod(1 - p))  # prob never captured given present
         omega_nd = pm.Deterministic("omega_nd", (omega * pr) / (omega * pr + (1 - omega)))
         
     return model

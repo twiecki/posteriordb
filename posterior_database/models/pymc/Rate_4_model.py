@@ -5,20 +5,15 @@ def make_model(data: dict) -> pm.Model:
     import numpy as np
 
     with pm.Model() as model:
-        # Parameters
-        # Beta(1,1) is equivalent to Uniform(0,1)
-        theta = pm.Uniform("theta", lower=0, upper=1)
-        thetaprior = pm.Uniform("thetaprior", lower=0, upper=1)
+        # Parameters with Beta(1,1) priors (uniform on [0,1])
+        theta = pm.Beta("theta", alpha=1, beta=1)
+        thetaprior = pm.Beta("thetaprior", alpha=1, beta=1)
         
-        # Observed data - k follows binomial(n, theta)
+        # Observed data - binomial likelihood
         k_obs = pm.Binomial("k", n=data['n'], p=theta, observed=data['k'])
         
-        # Stan uses proportional form, so we need to subtract the binomial coefficient
-        # log(C(n,k)) = log(n!) - log(k!) - log((n-k)!)
-        # Using gammaln since log(n!) = gammaln(n+1)
-        n = data['n']
-        k = data['k']
-        log_binom_coeff = pt.gammaln(n + 1) - pt.gammaln(k + 1) - pt.gammaln(n - k + 1)
-        pm.Potential("binomial_coeff_correction", -log_binom_coeff)
+        # Generated quantities are NOT part of the model logp
+        # They would be computed during posterior sampling if needed
+        # but don't contribute to the likelihood
 
     return model

@@ -15,16 +15,12 @@ def make_model(data: dict) -> pm.Model:
         pmubeta = data['pmubeta']
         psbeta = data['psbeta']
         
-        # Parameters
+        # Parameters with priors
         alpha = pm.Normal("alpha", mu=pmualpha, sigma=psalpha)
         beta = pm.Normal("beta", mu=pmubeta, sigma=psbeta)
-        sigma = pm.HalfFlat("sigma")
+        sigma = pm.HalfFlat("sigma")  # real<lower=0> with no explicit prior
         
-        # Correction for normalization constants difference between Stan and PyMC
-        # Stan may omit some constant terms when propto=True is used
-        pm.Potential("normalization_correction", N * pt.log(pt.sqrt(2 * pt.pi)))
-        
-        # Model (vectorized)
+        # Likelihood
         mu = alpha + beta * x
         y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)
 

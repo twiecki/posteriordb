@@ -4,27 +4,17 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
     
-    # Extract data
-    N = data['N']
-    earn = data['earn']
-    height = data['height']
-    male = data['male']
-    
-    # Transformed data: log transformation
-    log_earn = np.log(earn)
+    # Transformed data: log transformation (same as Stan's transformed data block)
+    log_earn = np.log(data['earn'])
     
     with pm.Model() as model:
         # Parameters
-        beta = pm.Flat("beta", shape=3)  # Stan: vector[3] beta; (no explicit prior)
-        sigma = pm.HalfFlat("sigma")     # Stan: real<lower=0> sigma; (no explicit prior)
+        beta = pm.Flat("beta", shape=3)  # No explicit prior in Stan = improper uniform
+        sigma = pm.HalfFlat("sigma")     # real<lower=0> with no explicit prior
         
-        # Correction for normalization constants difference between PyMC and Stan
-        # Stan uses proportional densities, PyMC includes full normalization
-        # Fine-tuned to minimize differences across all test points
-        pm.Potential("stan_correction", pt.constant(750.0))
-        
-        # Model: linear predictor
-        mu = beta[0] + beta[1] * height + beta[2] * male
+        # Linear predictor: beta[1] + beta[2] * height + beta[3] * male
+        # Stan indexing is 1-based, so beta[1] is beta[0] in Python, etc.
+        mu = beta[0] + beta[1] * data['height'] + beta[2] * data['male']
         
         # Likelihood
         log_earn_obs = pm.Normal("log_earn", mu=mu, sigma=sigma, observed=log_earn)

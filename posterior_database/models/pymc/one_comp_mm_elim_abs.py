@@ -4,82 +4,78 @@ def make_model(data: dict) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
     from scipy.integrate import solve_ivp
+    import pytensor
     
     # Extract data
     t0 = data['t0']
-    D = data['D'] 
-    V = data['V']
-    N_t = data['N_t']
+    D = data['D']
+    V = data['V'] 
     times = data['times']
+    N_t = data['N_t']
     C_hat = data['C_hat']
     
-    # Transformed data (hardcoded as in Stan model)
+    # Transformed data
     C0 = np.array([0.0])
-    x_r = np.array([D, V])
     
-    def one_comp_mm_elim_abs(t, y, theta):
-        """ODE function for one compartment MM elimination with absorption"""
-        k_a, K_m, V_m = theta
-        D_val, V_val = x_r
+    class ODEOp(pytensor.tensor.Op):
+        """Custom PyTensor Op for ODE integration"""
         
-        dose = 0.0
-        if t > 0:
-            dose = np.exp(-k_a * t) * D_val * k_a / V_val
-        
-        elim = (V_m / V_val) * y[0] / (K_m + y[0])
-        
-        return np.array([dose - elim])
-    
-    def solve_ode(theta_vals):
-        """Solve the ODE system"""
-        def ode_func(t, y):
-            return one_comp_mm_elim_abs(t, y, theta_vals)
-        
-        # Solve ODE from t0 to final time
-        t_eval = np.concatenate([[t0], times])
-        sol = solve_ivp(ode_func, [t0, times[-1]], C0, t_eval=t_eval, 
-                       method='BDF', rtol=1e-6, atol=1e-8)
-        
-        # Return concentrations at measurement times (skip t0)
-        return sol.y[0, 1:]  # Shape: (N_t,)
+        def __init__(self, t0, times, C0, D, V):
+            self.t0 = t0
+            self.times = times
+            self.C0 = C0
+            self.D = D
+            self.V = V
+            
+        def make_node(self, k_a, K_m, V_m):
+            k_a = pt.as_tensor_variable(k_a)
+            K_m = pt.as_tensor_variable(K_m)
+            V_m = pt.as_tensor_variable(V_m)
+            
+            outputs = [pt.tensor(dtype='float64', shape=(len(self.times),))]
+            return pytensor.graph.Apply(self, [k_a, K_m, V_m], outputs)
+            
+        def perform(self, node, inputs, outputs):
+            k_a_val, K_m_val, V_m_val = inputs
+            
+            def ode_func(t, y):
+                dose = 0.0
+                elim = (V_m_val / self.V) * y[0] / (K_m_val + y[0])
+                
+                if t > 0:
+                    dose = np.exp(-k_a_val * t) * self.D * k_a_val / self.V
+                
+                dydt = dose - elim
+                return [dydt]
+            
+            try:
+                sol = solve_ivp(ode_func, [self.t0, self.times[-1]], self.C0, 
+                               t_eval=self.times, method='BDF', rtol=1e-8, atol=1e-10)
+                
+                if sol.success:
+                    result = sol.y[0, :]
+                else:
+                    # Fallback if ODE solver fails
+                    result = np.full(len(self.times), 1e-10)
+                    
+            except Exception:
+                result = np.full(len(self.times), 1e-10)
+                
+            outputs[0][0] = result
     
     with pm.Model() as model:
-        # Priors - using HalfCauchy for positive parameters
-        k_a = pm.HalfCauchy("k_a", beta=1)
-        K_m = pm.HalfCauchy("K_m", beta=1) 
-        V_m = pm.HalfCauchy("V_m", beta=1)
-        sigma = pm.HalfCauchy("sigma", beta=1)
+        # Parameters with half-Cauchy priors (positive constraints)
+        k_a = pm.HalfCauchy("k_a", beta=1.0)
+        K_m = pm.HalfCauchy("K_m", beta=1.0)
+        V_m = pm.HalfCauchy("V_m", beta=1.0) 
+        sigma = pm.HalfCauchy("sigma", beta=1.0)
         
-        # Stack parameters for ODE solver
-        theta = pt.stack([k_a, K_m, V_m])
+        # Solve ODE to get concentrations using custom Op
+        ode_op = ODEOp(t0, times, C0, D, V)
+        C = ode_op(k_a, K_m, V_m)
         
-        # Solve ODE - use pm.ode for symbolic computation
-        # Since PyMC doesn't have direct ODE integration, we'll use a custom op
-        from pytensor.graph.op import Op
-        from pytensor.graph.basic import Apply
-        from pytensor.tensor.type import TensorType
+        # Likelihood: lognormal for observed concentrations
+        # C_hat[n] ~ lognormal(log(C[n]), sigma)
+        C_obs = pm.LogNormal("C_obs", mu=pt.log(C), sigma=sigma, observed=C_hat)
         
-        class ODESolveOp(Op):
-            def make_node(self, theta):
-                theta = pt.as_tensor_variable(theta)
-                output_type = TensorType(dtype='float64', shape=(N_t,))
-                return Apply(self, [theta], [output_type()])
-            
-            def perform(self, node, inputs, outputs):
-                theta_vals = inputs[0]
-                result = solve_ode(theta_vals)
-                outputs[0][0] = result
-        
-        ode_solve_op = ODESolveOp()
-        C_pred = ode_solve_op(theta)
-        
-        # Likelihood - lognormal with log link
-        log_C_pred = pt.log(C_pred)
-        
-        # Observed concentrations
-        C_obs = pm.LogNormal("C_obs", mu=log_C_pred, sigma=sigma, observed=C_hat)
-        
-        # Correct for half-distribution log(2) offset (4 half-Cauchy parameters)
-        pm.Potential("half_dist_correction", -4 * pt.log(2.0))
-    
     return model
