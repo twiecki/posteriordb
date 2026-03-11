@@ -313,3 +313,8 @@ Validation failed: Agent did not achieve validation after 20 tool calls
 ```
 Validation failed: Agent did not achieve validation after 20 tool calls
 ```
+
+### hierarchical_gp (2026-03-11 09:30)
+```
+Validation failed: Agent did not achieve validation after 16 tool calls
+```
