@@ -18,24 +18,23 @@ def make_model(data: dict) -> pm.Model:
         omega = pm.Uniform("omega", lower=0, upper=1)
         p = pm.Uniform("p", lower=0, upper=1, shape=T)
         
-        # Likelihood
-        # We'll handle each individual separately using pm.Potential
-        for i in range(M):
-            y_i = y[i]  # Get the capture history for individual i as numpy array
-            if s[i] > 0:
-                # Individual was captured at least once: z[i] = 1
-                # Log probability: log(omega) + sum(log(Bernoulli(y[i,t] | p[t])))
-                log_prob_zi_1 = pt.log(omega) + pt.sum(y_i * pt.log(p) + (1 - y_i) * pt.log(1 - p))
-                pm.Potential(f"likelihood_{i}", log_prob_zi_1)
-            else:
-                # Individual was never captured: mixture of z[i] = 0 and z[i] = 1
-                # z[i] = 1: log(omega) + sum(log(1-p)) (never detected but present)
-                log_prob_zi_1 = pt.log(omega) + pt.sum(pt.log(1 - p))
-                # z[i] = 0: log(1-omega) (not present)
-                log_prob_zi_0 = pt.log(1 - omega)
-                # Log-sum-exp of the two possibilities
-                log_prob = pt.logsumexp(pt.stack([log_prob_zi_1, log_prob_zi_0]))
-                pm.Potential(f"likelihood_{i}", log_prob)
+        # Vectorized likelihood
+        y_arr = np.array(y, dtype=np.float64)
+        obs_mask = s > 0
+
+        # Bernoulli logp for all individuals: shape (M, T)
+        bernoulli_logp = y_arr * pt.log(p)[None, :] + (1 - y_arr) * pt.log(1 - p)[None, :]
+
+        # Observed individuals: z[i] = 1
+        logp_obs = pt.log(omega) + pt.sum(bernoulli_logp[obs_mask], axis=1)
+
+        # Unobserved individuals: marginalize over z
+        n_unobs = int(np.sum(~obs_mask))
+        logp_z1 = pt.log(omega) + pt.sum(pt.log(1 - p))
+        logp_z0 = pt.log(1 - omega)
+        logp_unobs = pm.math.logaddexp(logp_z1, logp_z0)
+
+        pm.Potential("likelihood", pt.sum(logp_obs) + n_unobs * logp_unobs)
         
         # Generated quantities as deterministic variables
         pr = pm.Deterministic("pr", pt.prod(1 - p))

@@ -14,24 +14,26 @@ def make_model(data: dict) -> pm.Model:
         theta = pm.Normal("theta", mu=0, sigma=2)
         sigma = pm.HalfCauchy("sigma", beta=2.5)
         
-        # Initialize arrays for nu and err
-        nu = pt.zeros(T)
-        err = pt.zeros(T)
-        
+        import pytensor
+
         # Initial conditions (t=1, which is index 0 in Python)
-        nu_1 = mu + phi * mu  # assume err[0] == 0
-        err_1 = y[0] - nu_1
-        
-        # Build the sequences recursively
-        nu = pt.set_subtensor(nu[0], nu_1)
-        err = pt.set_subtensor(err[0], err_1)
-        
-        # Recursive computation for t >= 2 (index >= 1)
-        for t in range(1, T):
-            nu_t = mu + phi * y[t-1] + theta * err[t-1]
-            err_t = y[t] - nu_t
-            nu = pt.set_subtensor(nu[t], nu_t)
-            err = pt.set_subtensor(err[t], err_t)
+        nu_0 = mu + phi * mu  # assume err[0] == 0
+        y_tensor = pt.as_tensor_variable(y)
+        err_0 = y_tensor[0] - nu_0
+
+        # Recursive computation using scan
+        def step(y_t, y_tm1, err_tm1, mu, phi, theta_param):
+            nu_t = mu + phi * y_tm1 + theta_param * err_tm1
+            err_t = y_t - nu_t
+            return err_t
+
+        errs, _ = pytensor.scan(
+            fn=step,
+            sequences=[y_tensor[1:], y_tensor[:-1]],
+            outputs_info=[err_0],
+            non_sequences=[mu, phi, theta],
+        )
+        err = pt.concatenate([pt.atleast_1d(err_0), errs])
         
         # Likelihood: err ~ normal(0, sigma) using Potential
         log_likelihood = pt.sum(pm.logp(pm.Normal.dist(mu=0, sigma=sigma), err))

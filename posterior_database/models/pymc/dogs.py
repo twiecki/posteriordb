@@ -13,17 +13,9 @@ def make_model(data: dict) -> pm.Model:
         # Parameters
         beta = pm.Normal("beta", mu=0, sigma=100, shape=3)
         
-        # Transformed parameters - compute cumulative counts
-        n_avoid = np.zeros((n_dogs, n_trials))
-        n_shock = np.zeros((n_dogs, n_trials))
-        
-        for j in range(n_dogs):
-            n_avoid[j, 0] = 0
-            n_shock[j, 0] = 0
-            
-            for t in range(1, n_trials):
-                n_avoid[j, t] = n_avoid[j, t-1] + 1 - y_data[j, t-1]
-                n_shock[j, t] = n_shock[j, t-1] + y_data[j, t-1]
+        # Transformed parameters - compute cumulative counts (vectorized)
+        n_avoid = np.hstack([np.zeros((n_dogs, 1)), np.cumsum(1 - y_data[:, :-1], axis=1)])
+        n_shock = np.hstack([np.zeros((n_dogs, 1)), np.cumsum(y_data[:, :-1], axis=1)])
         
         # Compute logit probabilities
         p = beta[0] + beta[1] * n_avoid + beta[2] * n_shock

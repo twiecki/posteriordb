@@ -42,21 +42,23 @@ def make_model(data: dict) -> pm.Model:
         sigma = pt.stack([sigma_0, sigma_1, sigma_2])
         sigma = pm.Deterministic("sigma", sigma)
         
-        # Add prior for sigma ~ student_t(4, 0, 1)
-        for i in range(3):
-            pm.Potential(f"sigma_prior_{i}", 
-                        pm.logp(pm.StudentT.dist(nu=4, mu=0, sigma=1), sigma[i]))
-        
-        # Seasonal constraints: for t >= 12, seasonal[t] ~ normal(-sum(seasonal[t-11:t-1]), sigma[0])
-        for t in range(11, n):  # t in 12:n (Stan) -> t in 11:n (Python 0-based)
-            seasonal_sum = pt.sum(seasonal[t-11:t])  # sum from t-11 to t-1 (inclusive)
-            pm.Potential(f"seasonal_constraint_{t}", 
-                        pm.logp(pm.Normal.dist(mu=-seasonal_sum, sigma=sigma[0]), seasonal[t]))
-        
-        # Random walk for mu: for t >= 2, mu[t] ~ normal(mu[t-1], sigma[1])
-        for t in range(1, n):  # t in 2:n (Stan) -> t in 1:n (Python 0-based)
-            pm.Potential(f"mu_constraint_{t}", 
-                        pm.logp(pm.Normal.dist(mu=mu[t-1], sigma=sigma[1]), mu[t]))
+        # Add prior for sigma ~ student_t(4, 0, 1) (vectorized)
+        pm.Potential("sigma_prior", pt.sum(pm.logp(pm.StudentT.dist(nu=4, mu=0, sigma=1), sigma)))
+
+        # Seasonal constraints (vectorized): for t >= 11 (0-based), seasonal[t] ~ normal(-sum(seasonal[t-11:t]), sigma[0])
+        # This is equivalent to: sum(seasonal[t-11:t+1]) ~ Normal(0, sigma[0]) for each t in [11, n)
+        # Use cumsum with zero-padding to compute rolling 12-element window sums
+        cs = pt.cumsum(seasonal)
+        cs_padded = pt.concatenate([pt.zeros(1), cs])  # prepend 0 so cs_padded[0] = 0
+        # sum(seasonal[a:b]) = cs_padded[b] - cs_padded[a]
+        # sum(seasonal[t-11:t+1]) = cs_padded[t+1] - cs_padded[t-11]
+        t_indices = np.arange(11, n)
+        window_sums = cs_padded[t_indices + 1] - cs_padded[t_indices - 11]
+        pm.Potential("seasonal_constraint", pt.sum(pm.logp(pm.Normal.dist(mu=0, sigma=sigma[0]), window_sums)))
+
+        # Random walk for mu (vectorized): mu[t] ~ normal(mu[t-1], sigma[1])
+        mu_diff = mu[1:] - mu[:-1]
+        pm.Potential("mu_rw", pt.sum(pm.logp(pm.Normal.dist(mu=0, sigma=sigma[1]), mu_diff)))
         
         # Transformed parameter
         yhat = mu + beta * x + lambda_ * w
