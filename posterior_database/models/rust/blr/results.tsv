@@ -1,0 +1,4 @@
+turn	timestamp_s	event_type	status	us_per_eval	code_hash	description
+4	37.74	write_code	OK		03fe768b	Wrote 4215 chars
+5	119.69	build	PASS		03fe768b	Build OK (80.6s)
+6	123.68	validation	PASS		03fe768b	Validation passed

@@ -1,0 +1,7 @@
+turn	timestamp_s	event_type	status	us_per_eval	code_hash	description
+5	49.06	write_code	OK		4e3229a7	Wrote 4652 chars
+6	127.83	build	PASS		4e3229a7	Build OK (76.9s)
+7	133.52	validation	FAIL		4e3229a7	Validation failed (4 errors)
+8	153.99	write_code	OK		5a01305e	Wrote 4978 chars
+9	160.10	build	PASS		5a01305e	Build OK (2.2s)
+10	163.29	validation	PASS		5a01305e	Validation passed

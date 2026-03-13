@@ -1,0 +1,14 @@
+turn	timestamp_s	event_type	status	us_per_eval	code_hash	description
+3	100.99	build	CRASH		f2f35c25	Build FAILED (90.0s)
+7	139.89	write_code	OK		50f08986	Wrote 4395 chars
+8	146.46	build	PASS		50f08986	Build OK (2.5s)
+9	150.76	validation	FAIL		50f08986	Validation failed (20 errors)
+11	199.34	write_code	OK		8b25d40a	Wrote 4522 chars
+12	204.13	build	PASS		8b25d40a	Build OK (2.5s)
+13	207.31	validation	FAIL		8b25d40a	Validation failed (21 errors)
+14	231.64	write_code	OK		2a8ff6ca	Wrote 4516 chars
+15	237.02	build	PASS		2a8ff6ca	Build OK (3.5s)
+16	239.70	validation	FAIL		2a8ff6ca	Validation failed (17 errors)
+17	256.21	write_code	OK		f26179c9	Wrote 4531 chars
+18	260.19	build	PASS		f26179c9	Build OK (2.0s)
+19	265.43	validation	PASS		f26179c9	Validation passed
