@@ -1,0 +1,16 @@
+turn	timestamp_s	event_type	status	us_per_eval	code_hash	description
+5	42.04	write_code	OK		5c0a712b	Wrote 2812 chars
+6	131.00	build	PASS		5c0a712b	Build OK (86.7s)
+7	133.90	validation	FAIL		5c0a712b	Validation failed (4 errors)
+9	164.56	write_code	OK		7c3a8173	Wrote 6078 chars
+10	169.25	build	PASS		7c3a8173	Build OK (1.9s)
+11	172.03	validation	FAIL		7c3a8173	Validation failed (20 errors)
+12	195.68	write_code	OK		87dbc83b	Wrote 4222 chars
+13	199.84	build	PASS		87dbc83b	Build OK (2.2s)
+14	202.18	validation	FAIL		87dbc83b	Validation failed (20 errors)
+15	218.20	write_code	OK		ba33c1d4	Wrote 4211 chars
+16	223.32	build	PASS		ba33c1d4	Build OK (2.3s)
+17	225.77	validation	FAIL		ba33c1d4	Validation failed (3 errors)
+18	244.15	write_code	OK		cb98fb5e	Wrote 4249 chars
+19	247.01	build	PASS		cb98fb5e	Build OK (0.9s)
+20	250.37	validation	PASS		cb98fb5e	Validation passed

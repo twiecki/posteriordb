@@ -1,0 +1,7 @@
+turn	timestamp_s	event_type	status	us_per_eval	code_hash	description
+4	36.78	write_code	OK		6d540533	Wrote 4002 chars
+5	143.90	build	PASS		6d540533	Build OK (103.5s)
+6	146.47	validation	FAIL		6d540533	Validation failed (14 errors)
+7	170.15	write_code	OK		c3e1853c	Wrote 4155 chars
+8	174.09	build	PASS		c3e1853c	Build OK (2.1s)
+9	176.39	validation	PASS		c3e1853c	Validation passed
