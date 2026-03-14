@@ -26,7 +26,6 @@ def make_model(data: dict) -> pm.Model:
         # PyMC Normal likelihood includes -0.5 * log(2*pi) per observation
         # Let me add a correction for this
         N = len(log_earn)
-        pm.Potential("normal_constant_correction", N * 0.5 * pt.log(2 * np.pi))
         
         log_earn_obs = pm.Normal("log_earn", mu=mu, sigma=sigma, observed=log_earn)
     

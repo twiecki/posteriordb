@@ -21,7 +21,6 @@ def make_model(data: dict) -> pm.Model:
         # Correction for normalization constants difference between PyMC and Stan
         # Stan uses proportional densities, PyMC includes full normalization
         # Fine-tuned to minimize differences across all test points
-        pm.Potential("stan_correction", pt.constant(750.0))
         
         # Model: linear predictor
         mu = beta[0] + beta[1] * height + beta[2] * male

@@ -25,7 +25,7 @@ def make_model(data: dict) -> pm.Model:
         
         # Model: bernoulli_logit_glm(x, alpha, beta)
         # This is equivalent to bernoulli_logit(alpha + x * beta)
-        logit_p = alpha + pm.math.dot(x, beta)
+        logit_p = alpha + x @ beta
         
         # Likelihood
         switched_obs = pm.Bernoulli("switched", logit_p=logit_p, observed=switched)

@@ -23,7 +23,5 @@ def make_model(data: dict) -> pm.Model:
         mu = alpha[county_idx]
         pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
         
-        # Correction for half-normal distributions (Stan vs PyMC logp difference)
-        pm.Potential("half_dist_correction", -2 * pt.log(2.0))
         
     return model

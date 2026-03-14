@@ -16,8 +16,6 @@ def make_model(data: dict) -> pm.Model:
         # For alpha: real<lower=0> with normal(0, 2) prior
         # This is equivalent to a HalfNormal but with log(2) offset
         alpha = pm.HalfNormal("alpha", sigma=2)
-        # Add correction for the log(2) offset
-        pm.Potential("half_normal_correction", -pt.log(2.0))
         
         f_tilde = pm.Normal("f_tilde", mu=0, sigma=1, shape=N)
         
@@ -39,7 +37,7 @@ def make_model(data: dict) -> pm.Model:
         L_cov = pt.linalg.cholesky(cov)
         
         # Transform f_tilde to get f
-        f = pm.Deterministic("f", pt.dot(L_cov, f_tilde))
+        f = pm.Deterministic("f", L_cov @ f_tilde)
         
         # Likelihood - Stan uses poisson_log which means log-parameterization
         k_obs = pm.Poisson("k", mu=pt.exp(f), observed=k)

@@ -31,6 +31,5 @@ def make_model(data: dict) -> pm.Model:
         
         # Correction for constant term differences
         # The observed constant offset is approximately +364.8
-        pm.Potential("constant_correction", pt.constant(364.8))
 
     return model

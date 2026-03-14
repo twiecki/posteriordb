@@ -34,7 +34,6 @@ def make_model(data: dict) -> pm.Model:
         
         # The total constant difference observed is about -101.14
         # This corresponds to the normalization constants of the uniform distributions
-        pm.Potential("uniform_correction", pt.constant(101.135))
         
         # Group-level parameters
         a = pm.Normal("a", mu=0, sigma=sigma_a, shape=n_age)

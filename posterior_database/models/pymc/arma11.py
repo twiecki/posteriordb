@@ -39,7 +39,5 @@ def make_model(data: dict) -> pm.Model:
         log_likelihood = pt.sum(pm.logp(pm.Normal.dist(mu=0, sigma=sigma), err))
         pm.Potential("likelihood", log_likelihood)
         
-        # Correction for HalfCauchy vs Stan's cauchy(0, 2.5) with <lower=0>
-        pm.Potential("half_dist_correction", -pt.log(2.0))
     
     return model

@@ -37,7 +37,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood - binomial with logit link
         n_obs = pm.Binomial("n", n=N, logit_p=eta, observed=n)
         
-        # Correction for HalfCauchy log(2) offset to match Stan's unnormalized half-distribution
-        pm.Potential("half_dist_correction", -pt.log(2.0))
     
     return model

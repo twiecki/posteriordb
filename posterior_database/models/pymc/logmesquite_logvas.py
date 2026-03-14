@@ -38,7 +38,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood
         log_weight_obs = pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
         
-        # Correction for HalfFlat (which is a half distribution)
-        pm.Potential("half_dist_correction", -pt.log(2.0))
     
     return model

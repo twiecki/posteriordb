@@ -1,0 +1,141 @@
+{
+  "timestamp": "2026-03-14T01:26:47.648952",
+  "total_models": 8,
+  "succeeded": 6,
+  "failed": 2,
+  "total_tokens": 5850153,
+  "models": [
+    {
+      "model": "blr",
+      "success": true,
+      "n_tool_calls": 6,
+      "conversation_turns": 6,
+      "n_build_attempts": 1,
+      "token_usage": {
+        "input_tokens": 90570,
+        "output_tokens": 2044,
+        "total_tokens": 92614
+      },
+      "us_per_eval": null,
+      "wall_time_s": 135.6,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/blr/results.tsv"
+    },
+    {
+      "model": "2pl_latent_reg_irt",
+      "success": false,
+      "n_tool_calls": 30,
+      "conversation_turns": 30,
+      "n_build_attempts": 8,
+      "token_usage": {
+        "input_tokens": 2715492,
+        "output_tokens": 29535,
+        "total_tokens": 2745027
+      },
+      "us_per_eval": null,
+      "wall_time_s": 629.2,
+      "validation_errors": [
+        "Agent did not achieve validation after 30 tool calls"
+      ],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/2pl_latent_reg_irt/results.tsv"
+    },
+    {
+      "model": "diamonds",
+      "success": true,
+      "n_tool_calls": 4,
+      "conversation_turns": 4,
+      "n_build_attempts": 1,
+      "token_usage": {
+        "input_tokens": 68921,
+        "output_tokens": 2159,
+        "total_tokens": 71080
+      },
+      "us_per_eval": null,
+      "wall_time_s": 174.4,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/diamonds/results.tsv"
+    },
+    {
+      "model": "dogs_log",
+      "success": false,
+      "n_tool_calls": 30,
+      "conversation_turns": 30,
+      "n_build_attempts": 8,
+      "token_usage": {
+        "input_tokens": 1251730,
+        "output_tokens": 18264,
+        "total_tokens": 1269994
+      },
+      "us_per_eval": null,
+      "wall_time_s": 578.9,
+      "validation_errors": [
+        "Agent did not achieve validation after 30 tool calls"
+      ],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/dogs_log/results.tsv"
+    },
+    {
+      "model": "kidscore_interaction",
+      "success": true,
+      "n_tool_calls": 10,
+      "conversation_turns": 10,
+      "n_build_attempts": 2,
+      "token_usage": {
+        "input_tokens": 274452,
+        "output_tokens": 4667,
+        "total_tokens": 279119
+      },
+      "us_per_eval": null,
+      "wall_time_s": 173.0,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/kidscore_interaction/results.tsv"
+    },
+    {
+      "model": "kidscore_interaction_c",
+      "success": true,
+      "n_tool_calls": 19,
+      "conversation_turns": 19,
+      "n_build_attempts": 5,
+      "token_usage": {
+        "input_tokens": 593457,
+        "output_tokens": 8946,
+        "total_tokens": 602403
+      },
+      "us_per_eval": null,
+      "wall_time_s": 269.9,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/kidscore_interaction_c/results.tsv"
+    },
+    {
+      "model": "kidscore_interaction_c2",
+      "success": true,
+      "n_tool_calls": 20,
+      "conversation_turns": 20,
+      "n_build_attempts": 5,
+      "token_usage": {
+        "input_tokens": 582509,
+        "output_tokens": 9760,
+        "total_tokens": 592269
+      },
+      "us_per_eval": null,
+      "wall_time_s": 251.2,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/kidscore_interaction_c2/results.tsv"
+    },
+    {
+      "model": "kidscore_interaction_z",
+      "success": true,
+      "n_tool_calls": 9,
+      "conversation_turns": 9,
+      "n_build_attempts": 2,
+      "token_usage": {
+        "input_tokens": 193541,
+        "output_tokens": 4106,
+        "total_tokens": 197647
+      },
+      "us_per_eval": null,
+      "wall_time_s": 177.2,
+      "validation_errors": [],
+      "trace_file": "/Users/twiecki/projects/posteriordb/posterior_database/models/rust/kidscore_interaction_z/results.tsv"
+    }
+  ]
+}

@@ -24,7 +24,7 @@ def make_model(data: dict) -> pm.Model:
         beta = pm.Flat("beta", shape=3)
         
         # Linear predictor
-        eta = alpha + pm.math.dot(x, beta)
+        eta = alpha + x @ beta
         
         # Likelihood - bernoulli with logit link
         switched_obs = pm.Bernoulli("switched", logit_p=eta, observed=switched)

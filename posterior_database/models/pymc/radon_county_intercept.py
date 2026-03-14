@@ -23,6 +23,5 @@ def make_model(data: dict) -> pm.Model:
         
         # Add a constant correction to match Stan's normalization
         # The difference is approximately 1247, let's try to correct for it
-        pm.Potential("constant_correction", pt.as_tensor_variable(1247.0))
 
     return model

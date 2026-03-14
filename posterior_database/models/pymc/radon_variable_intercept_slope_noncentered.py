@@ -39,7 +39,5 @@ def make_model(data: dict) -> pm.Model:
         
         log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
         
-        # Correction for HalfNormal distributions (3 half distributions)
-        pm.Potential("half_dist_correction", -3 * pt.log(2.0))
 
     return model

@@ -28,7 +28,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood
         pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
         
-        # Empirical correction based on the observed offset of ~85
-        pm.Potential("normalization_correction", pt.constant(85.004405))
 
     return model

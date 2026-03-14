@@ -32,7 +32,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood
         y_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
         
-        # Add correction for systematic offset
-        pm.Potential("offset_correction", pt.constant(716.54))
     
     return model

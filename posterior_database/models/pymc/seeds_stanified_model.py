@@ -35,7 +35,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood
         n_obs = pm.Binomial("n", n=N, logit_p=logit_p, observed=n)
         
-        # Correction for HalfCauchy log(2) offset to match Stan exactly
-        pm.Potential("half_dist_correction", -pt.log(2.0))
     
     return model

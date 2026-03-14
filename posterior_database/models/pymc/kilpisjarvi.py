@@ -20,9 +20,6 @@ def make_model(data: dict) -> pm.Model:
         beta = pm.Normal("beta", mu=pmubeta, sigma=psbeta)
         sigma = pm.HalfFlat("sigma")
         
-        # Correction for normalization constants difference between Stan and PyMC
-        # Stan may omit some constant terms when propto=True is used
-        pm.Potential("normalization_correction", N * pt.log(pt.sqrt(2 * pt.pi)))
         
         # Model (vectorized)
         mu = alpha + beta * x

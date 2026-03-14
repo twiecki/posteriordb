@@ -35,6 +35,5 @@ def make_model(data: dict) -> pm.Model:
         # Correction for half-normal distributions (Stan vs PyMC logp difference)
         # Stan uses improper half-distributions, PyMC uses proper ones with log(2) normalization
         n_half_params = 2  # sigma_alpha and sigma_y
-        pm.Potential("half_dist_correction", -n_half_params * pt.log(2.0))
 
     return model
