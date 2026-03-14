@@ -20,12 +20,10 @@ def make_model(data: dict) -> pm.Model:
         # Build lag matrix for vectorized AR(K) computation
         y_arr = np.array(y_data)
         lag_matrix = np.column_stack([y_arr[K-k-1:T-k-1] for k in range(K)])
-        mu = alpha + pt.dot(lag_matrix, beta)
+        mu = alpha + lag_matrix @ beta
         
         # Likelihood for observations from K+1 to T (Stan 1-based) -> K to T-1 (0-based)
         y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y_data[K:])
         
-        # Correction for HalfCauchy log(2) offset to match Stan
-        pm.Potential("half_dist_correction", -pt.log(2.0))
     
     return model

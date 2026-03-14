@@ -61,6 +61,6 @@ def make_model(data: dict) -> pm.Model:
         pm.Bernoulli("y", logit_p=logit_p, observed=y)
         
         # Generated quantities 
-        Omega = pm.Deterministic("Omega", pt.dot(L_chol, L_chol.T))
+        Omega = pm.Deterministic("Omega", L_chol @ L_chol.T)
     
     return model

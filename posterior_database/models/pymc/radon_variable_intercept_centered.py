@@ -16,7 +16,6 @@ def make_model(data: dict) -> pm.Model:
         
         # The exact correction needed to match Stan's logp
         # Stan's real<lower=0> with normal(0,1) doesn't include the log(2) normalization
-        pm.Potential("logp_correction", pt.constant(86.39070))
         
         # Hierarchical county-level intercepts
         alpha = pm.Normal("alpha", mu=mu_alpha, sigma=sigma_alpha, shape=data['J'])

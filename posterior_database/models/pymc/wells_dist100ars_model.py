@@ -23,7 +23,7 @@ def make_model(data: dict) -> pm.Model:
         
         # Model - Bernoulli logistic GLM
         # Linear predictor: alpha + x @ beta
-        eta = alpha + pm.math.dot(x, beta)
+        eta = alpha + x @ beta
         
         # Likelihood
         switched_obs = pm.Bernoulli("switched", logit_p=eta, observed=switched)

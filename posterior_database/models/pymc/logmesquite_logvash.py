@@ -39,8 +39,5 @@ def make_model(data: dict) -> pm.Model:
         # The Normal likelihood
         log_weight_obs = pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
         
-        # Add correction for the constant offset observed in validation
-        # This accounts for differences in normalization constants between Stan and PyMC
-        pm.Potential("normalization_correction", pt.constant(42.27117))
 
     return model

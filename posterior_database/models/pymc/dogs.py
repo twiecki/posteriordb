@@ -23,7 +23,5 @@ def make_model(data: dict) -> pm.Model:
         # Use Bernoulli with observed data
         pm.Bernoulli("y", logit_p=p, observed=y_data)
         
-        # Add correction for the observed constant offset
-        pm.Potential("stan_normalization_correction", pt.constant(16.572327))
 
     return model

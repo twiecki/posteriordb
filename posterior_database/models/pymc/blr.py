@@ -16,7 +16,7 @@ def make_model(data: dict) -> pm.Model:
         sigma = pm.HalfNormal("sigma", sigma=10)
         
         # Linear predictor
-        mu = pm.math.dot(X, beta)
+        mu = X @ beta
         
         # Likelihood
         y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)

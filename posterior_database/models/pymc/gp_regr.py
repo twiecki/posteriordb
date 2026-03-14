@@ -36,8 +36,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood: y ~ multi_normal_cholesky(rep_vector(0, N), L_cov)
         y_obs = pm.MvNormal("y", mu=pt.zeros(N), chol=L_cov, observed=y)
         
-        # Account for half-distribution log(2) correction
-        # We have 2 half-normal distributions: alpha and sigma
-        pm.Potential("half_dist_correction", -2 * pt.log(2.0))
     
     return model

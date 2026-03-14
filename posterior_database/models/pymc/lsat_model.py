@@ -27,8 +27,6 @@ def make_model(data: dict) -> pm.Model:
         # Stan: real<lower=0> beta ~ normal(0, 100) is HalfNormal in PyMC
         # But we need to account for the log(2) offset difference
         beta = pm.HalfNormal("beta", sigma=100)
-        # Add correction potential for the log(2) offset from HalfNormal vs Stan's approach
-        pm.Potential("beta_correction", -pt.log(2.0))
         
         # Model: bernoulli_logit for all questions at once (vectorized)
         # Stan: r[k] ~ bernoulli_logit(beta * theta - alpha[k])

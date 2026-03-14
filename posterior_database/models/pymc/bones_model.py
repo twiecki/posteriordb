@@ -13,12 +13,8 @@ def make_model(data: dict) -> pm.Model:
         ncat = np.array(data['ncat'])    # shape: [nInd]
         grade = np.array(data['grade'])  # shape: [nChild, nInd]
 
-        # Parameters - use Flat priors and add manual normal log prob to match Stan exactly
-        theta = pm.Flat("theta", shape=nChild)
-
-        # Add manual prior to match Stan's normal(0, 36) exactly
-        prior_log_prob = -0.5 * pt.sum((theta / 36.0) ** 2)
-        pm.Potential("theta_prior", prior_log_prob)
+        # Prior
+        theta = pm.Normal("theta", mu=0, sigma=36, shape=nChild)
 
         # --- Vectorized likelihood ---
         max_ncat = int(np.max(ncat))

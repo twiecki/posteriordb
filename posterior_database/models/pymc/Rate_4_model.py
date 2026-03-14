@@ -19,6 +19,5 @@ def make_model(data: dict) -> pm.Model:
         n = data['n']
         k = data['k']
         log_binom_coeff = pt.gammaln(n + 1) - pt.gammaln(k + 1) - pt.gammaln(n - k + 1)
-        pm.Potential("binomial_coeff_correction", -log_binom_coeff)
 
     return model

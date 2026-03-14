@@ -34,10 +34,10 @@ def make_model(data: dict) -> pm.Model:
         
         # Likelihood - bernoulli_logit_glm
         # This is equivalent to: logit(p) = beta0 + x @ beta
-        logit_p = beta0 + pt.dot(x, beta)
+        logit_p = beta0 + x @ beta
         y_obs = pm.Bernoulli("y", logit_p=logit_p, observed=y)
         
         # Generated quantities (as Deterministic)
-        f = pm.Deterministic("f", beta0 + pt.dot(x, beta))
+        f = pm.Deterministic("f", beta0 + x @ beta)
 
     return model

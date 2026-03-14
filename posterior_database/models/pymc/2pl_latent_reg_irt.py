@@ -58,7 +58,7 @@ def make_model(data: dict) -> pm.Model:
         beta = pt.concatenate([beta_free, pt.atleast_1d(-pt.sum(beta_free))])
         
         # theta ~ normal(W_adj * lambda_adj, 1)
-        mu_theta = pt.dot(W_adj, lambda_adj)
+        mu_theta = W_adj @ lambda_adj
         theta = pm.Normal("theta", mu=mu_theta, sigma=1, shape=J)
         
         # Likelihood

@@ -23,7 +23,5 @@ def make_model(data: dict) -> pm.Model:
         # Likelihood: y ~ normal(theta, sigma)
         y = pm.Normal("y", mu=theta, sigma=sigma_data, observed=y_obs)
         
-        # Correction for HalfCauchy log(2) offset to match Stan exactly
-        pm.Potential("half_dist_correction", -pt.log(2.0))
         
     return model

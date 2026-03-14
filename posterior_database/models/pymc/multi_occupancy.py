@@ -44,7 +44,7 @@ def make_model(data: dict) -> pm.Model:
         # Vectorized MVN logp for all species
         inv_cov = pt.linalg.solve(cov_matrix, pt.eye(2))
         det_cov = var1 * var2 - cov12**2
-        quad_forms = pt.sum(pt.dot(uv, inv_cov) * uv, axis=1)  # shape (S,)
+        quad_forms = pt.sum(uv @ inv_cov * uv, axis=1)  # shape (S,)
         mvn_logp = -0.5 * pt.sum(quad_forms) - 0.5 * S * pt.log(det_cov) - S * np.log(2 * np.pi)
 
         # Subtract already-counted standard normal densities
@@ -105,7 +105,5 @@ def make_model(data: dict) -> pm.Model:
         total_logp = logp_observed_species + logp_unobserved_species
         pm.Potential("likelihood", total_logp)
         
-        # Add correction for HalfCauchy distributions
-        pm.Potential("half_dist_correction", -2 * pt.log(2.0))
     
     return model

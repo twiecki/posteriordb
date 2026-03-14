@@ -25,6 +25,5 @@ def make_model(data: dict) -> pm.Model:
         # Remove normalization constant to match Stan's propto=True behavior
         # Each normal contributes -0.5 * log(2*pi) which Stan drops
         N = len(watched_data)
-        pm.Potential("normalization_correction", N * 0.5 * pt.log(2.0 * np.pi))
 
     return model

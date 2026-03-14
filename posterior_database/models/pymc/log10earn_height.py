@@ -25,7 +25,5 @@ def make_model(data: dict) -> pm.Model:
         # Normal distribution normalization: -0.5 * log(2π) per observation
         # HalfFlat normalization: -log(2) for the half-distribution
         N_obs = len(log10_earn)
-        pm.Potential("normalization_correction", 
-                     0.5 * N_obs * pt.log(2 * np.pi) + pt.log(2.0))
         
     return model

@@ -35,7 +35,5 @@ def make_model(data: dict) -> pm.Model:
         # Generated quantities
         alpha0 = pm.Deterministic("alpha0", mu_alpha - xbar * mu_beta)
         
-        # Correction for HalfFlat distributions (3 of them)
-        pm.Potential("half_dist_correction", -3 * pt.log(2.0))
 
     return model

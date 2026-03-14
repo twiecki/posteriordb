@@ -23,7 +23,7 @@ def make_model(data: dict) -> pm.Model:
         beta = pm.Flat("beta", shape=3)
         
         # Linear predictor
-        logit_p = alpha + pt.dot(X, beta)
+        logit_p = alpha + X @ beta
         
         # Likelihood
         switched_obs = pm.Bernoulli("switched", logit_p=logit_p, observed=switched)

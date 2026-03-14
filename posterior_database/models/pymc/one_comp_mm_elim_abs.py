@@ -79,7 +79,5 @@ def make_model(data: dict) -> pm.Model:
         # Observed concentrations
         C_obs = pm.LogNormal("C_obs", mu=log_C_pred, sigma=sigma, observed=C_hat)
         
-        # Correct for half-distribution log(2) offset (4 half-Cauchy parameters)
-        pm.Potential("half_dist_correction", -4 * pt.log(2.0))
     
     return model

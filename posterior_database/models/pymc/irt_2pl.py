@@ -44,6 +44,5 @@ def make_model(data: dict) -> pm.Model:
         # Correction for HalfCauchy distributions (3 of them)
         # Stan uses full Cauchy on positive domain, PyMC uses normalized half-distribution
         n_half_params = 3
-        pm.Potential("half_dist_correction", -n_half_params * pt.log(2.0))
     
     return model

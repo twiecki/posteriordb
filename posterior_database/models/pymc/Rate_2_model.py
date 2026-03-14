@@ -19,6 +19,5 @@ def make_model(data: dict) -> pm.Model:
         
         # Correct for the difference between Stan and PyMC normalization
         # The exact difference appears to be -10.316921
-        pm.Potential("normalization_correction", pt.constant(-10.316921))
 
     return model
