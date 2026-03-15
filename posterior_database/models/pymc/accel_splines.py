@@ -3,18 +3,18 @@ def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pytensor.tensor as pt
     import numpy as np
 
+    N = data['N']
+    Y = data['Y']
+    Ks = data['Ks']
+    Xs = data['Xs']
+    knots_1 = data['knots_1']
+    Zs_1_1 = data['Zs_1_1']
+    Ks_sigma = data['Ks_sigma']
+    Xs_sigma = data['Xs_sigma']
+    knots_sigma_1 = data['knots_sigma_1']
+    Zs_sigma_1_1 = data['Zs_sigma_1_1']
+
     with pm.Model() as model:
-        N = data['N']
-        Y = data['Y']
-        Ks = data['Ks']
-        Xs = data['Xs']
-        knots_1 = data['knots_1']
-        Zs_1_1 = data['Zs_1_1']
-        Ks_sigma = data['Ks_sigma']
-        Xs_sigma = data['Xs_sigma']
-        knots_sigma_1 = data['knots_sigma_1']
-        Zs_sigma_1_1 = data['Zs_sigma_1_1']
-        
         Intercept = pm.StudentT("Intercept", nu=3, mu=-13, sigma=36)
         bs = pm.Flat("bs", shape=Ks)
         
@@ -34,9 +34,6 @@ def make_model(data: dict, prior_only: bool = False) -> pm.Model:
         sigma_linear = Intercept_sigma + Xs_sigma @ bs_sigma + Zs_sigma_1_1 @ s_sigma_1_1
         
         sigma = pm.Deterministic("sigma", pt.exp(sigma_linear))
-        
-        b_Intercept = pm.Deterministic("b_Intercept", Intercept)
-        b_sigma_Intercept = pm.Deterministic("b_sigma_Intercept", Intercept_sigma)
         
         if not prior_only:
             Y_obs = pm.Normal("Y", mu=mu_linear, sigma=sigma, observed=Y)

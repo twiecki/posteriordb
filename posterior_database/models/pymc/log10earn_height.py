@@ -16,8 +16,6 @@ def make_model(data: dict, prior_only: bool = False) -> pm.Model:
         mu = beta[0] + beta[1] * height
         
         if not prior_only:
-            log10_earn_obs = pm.Normal("log10_earn", mu=mu, sigma=sigma, observed=log10_earn)
-        
-        N_obs = len(log10_earn)
-        
+            pm.Normal("log10_earn", mu=mu, sigma=sigma, observed=log10_earn)
+
     return model
