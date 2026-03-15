@@ -1,11 +1,9 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
 
     with pm.Model() as model:
-        # Extract data
         N = data['N']
         x = data['x']
         y = data['y']
@@ -15,14 +13,13 @@ def make_model(data: dict) -> pm.Model:
         pmubeta = data['pmubeta']
         psbeta = data['psbeta']
         
-        # Parameters
         alpha = pm.Normal("alpha", mu=pmualpha, sigma=psalpha)
         beta = pm.Normal("beta", mu=pmubeta, sigma=psbeta)
         sigma = pm.HalfFlat("sigma")
         
-        
-        # Model (vectorized)
         mu = alpha + beta * x
-        y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)
+        
+        if not prior_only:
+            y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)
 
     return model

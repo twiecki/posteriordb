@@ -1,10 +1,8 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
     
-    # Convert data to numpy arrays
     weight = np.array(data['weight'])
     diam1 = np.array(data['diam1'])
     diam2 = np.array(data['diam2'])
@@ -13,7 +11,6 @@ def make_model(data: dict) -> pm.Model:
     density = np.array(data['density'], dtype=float)
     group = np.array(data['group'], dtype=float)
     
-    # Transformed data - compute derived quantities from input data
     log_weight = np.log(weight)
     log_canopy_volume = np.log(diam1 * diam2 * canopy_height)
     log_canopy_area = np.log(diam1 * diam2)
@@ -22,11 +19,9 @@ def make_model(data: dict) -> pm.Model:
     log_density = np.log(density)
     
     with pm.Model() as model:
-        # Parameters
         beta = pm.Flat("beta", shape=7)
         sigma = pm.HalfFlat("sigma")
         
-        # Linear predictor
         mu = (beta[0] + 
               beta[1] * log_canopy_volume + 
               beta[2] * log_canopy_area +
@@ -35,8 +30,7 @@ def make_model(data: dict) -> pm.Model:
               beta[5] * log_density +
               beta[6] * group)
         
-        # Likelihood
-        log_weight_obs = pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
-        
+        if not prior_only:
+            log_weight_obs = pm.Normal("log_weight", mu=mu, sigma=sigma, observed=log_weight)
     
     return model

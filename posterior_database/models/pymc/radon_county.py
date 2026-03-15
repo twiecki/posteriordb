@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -11,16 +10,15 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         
-        # Parameters with bounds - use Uniform since no explicit priors given
-        mu_a = pm.Normal("mu_a", mu=0, sigma=1)  # explicit prior in Stan
-        sigma_a = pm.Uniform("sigma_a", lower=0, upper=100)  # bounded, no explicit prior
-        sigma_y = pm.Uniform("sigma_y", lower=0, upper=100)  # bounded, no explicit prior
+        mu_a = pm.Normal("mu_a", mu=0, sigma=1)
+        sigma_a = pm.Uniform("sigma_a", lower=0, upper=100)
+        sigma_y = pm.Uniform("sigma_y", lower=0, upper=100)
         
-        # County-level random effects
         a = pm.Normal("a", mu=mu_a, sigma=sigma_a, shape=J)
         
-        # Likelihood - vectorized using advanced indexing
         y_hat = a[county]
-        y_likelihood = pm.Normal("y", mu=y_hat, sigma=sigma_y, observed=y_obs)
+        
+        if not prior_only:
+            pm.Normal("y", mu=y_hat, sigma=sigma_y, observed=y_obs)
 
     return model

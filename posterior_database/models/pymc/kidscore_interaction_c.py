@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -13,12 +12,12 @@ def make_model(data: dict) -> pm.Model:
     inter = c_mom_hs * c_mom_iq
 
     with pm.Model() as model:
-        # Parameters
         beta = pm.Flat("beta", shape=4)
         sigma = pm.HalfFlat("sigma")
         
-        # Model
         mu = beta[0] + beta[1] * c_mom_hs + beta[2] * c_mom_iq + beta[3] * inter
-        kid_score_obs = pm.Normal("kid_score", mu=mu, sigma=sigma, observed=kid_score)
+        
+        if not prior_only:
+            pm.Normal("kid_score", mu=mu, sigma=sigma, observed=kid_score)
 
     return model

@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -11,14 +10,11 @@ def make_model(data: dict) -> pm.Model:
     n_shock = np.hstack([np.zeros((n_dogs, 1)), np.cumsum(y_data[:, :-1], axis=1)])
 
     with pm.Model() as model:
-        # Parameters
         beta = pm.Normal("beta", mu=0, sigma=100, shape=3)
         
-        # Compute logit probabilities
-        p = beta[0] + beta[1] * n_avoid + beta[2] * n_shock
+        logit_p = beta[0] + beta[1] * n_avoid + beta[2] * n_shock
         
-        # Use Bernoulli with observed data
-        pm.Bernoulli("y", logit_p=p, observed=y_data)
-        
+        if not prior_only:
+            pm.Bernoulli("y", logit_p=logit_p, observed=y_data)
 
     return model

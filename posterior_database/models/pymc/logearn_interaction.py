@@ -1,28 +1,23 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
     
-    # Extract data and convert to numpy arrays
     N = data['N']
     earn = np.array(data['earn'], dtype=float)
     height = np.array(data['height'], dtype=float)
     male = np.array(data['male'], dtype=float)
     
-    # Transformed data (same as Stan's transformed data block)
     log_earn = np.log(earn)
-    inter = height * male  # element-wise multiplication
+    inter = height * male
     
     with pm.Model() as model:
-        # Parameters
-        beta = pm.Flat("beta", shape=4)  # No explicit prior in Stan = improper uniform
-        sigma = pm.HalfFlat("sigma")     # real<lower=0> with no explicit prior
+        beta = pm.Flat("beta", shape=4)
+        sigma = pm.HalfFlat("sigma")
         
-        # Model: linear combination
-        mu = beta[0] + beta[1] * height + beta[2] * male + beta[3] * inter
+        mu = pm.Deterministic("mu", beta[0] + beta[1] * height + beta[2] * male + beta[3] * inter)
         
-        # Likelihood
-        log_earn_obs = pm.Normal("log_earn", mu=mu, sigma=sigma, observed=log_earn)
+        if not prior_only:
+            log_earn_obs = pm.Normal("log_earn", mu=mu, sigma=sigma, observed=log_earn)
     
     return model

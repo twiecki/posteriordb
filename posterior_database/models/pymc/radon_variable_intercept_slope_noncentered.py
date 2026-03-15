@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -12,32 +11,22 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         
-        # Parameters
-        # Stan: real<lower=0> sigma_y ~ normal(0, 1);
         sigma_y = pm.HalfNormal("sigma_y", sigma=1)
-        
-        # Stan: real<lower=0> sigma_alpha ~ normal(0, 1);
         sigma_alpha = pm.HalfNormal("sigma_alpha", sigma=1)
-        
-        # Stan: real<lower=0> sigma_beta ~ normal(0, 1);
         sigma_beta = pm.HalfNormal("sigma_beta", sigma=1)
         
-        # Hyperparameters
         mu_alpha = pm.Normal("mu_alpha", mu=0, sigma=10)
         mu_beta = pm.Normal("mu_beta", mu=0, sigma=10)
         
-        # Non-centered parameterization
         alpha_raw = pm.Normal("alpha_raw", mu=0, sigma=1, shape=J)
         beta_raw = pm.Normal("beta_raw", mu=0, sigma=1, shape=J)
         
-        # Transformed parameters
         alpha = pm.Deterministic("alpha", mu_alpha + sigma_alpha * alpha_raw)
         beta = pm.Deterministic("beta", mu_beta + sigma_beta * beta_raw)
         
-        # Likelihood
-        mu = alpha[county_idx] + floor_measure * beta[county_idx]
+        mu = pm.Deterministic("mu", alpha[county_idx] + floor_measure * beta[county_idx])
         
-        log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
-        
+        if not prior_only:
+            pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
 
     return model

@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -8,23 +7,17 @@ def make_model(data: dict) -> pm.Model:
     floor_measure = np.array(data['floor_measure'])
 
     with pm.Model() as model:
-        # Priors - back to HalfNormal with computed correction
         sigma_y = pm.HalfNormal("sigma_y", sigma=1)
         sigma_alpha = pm.HalfNormal("sigma_alpha", sigma=1)
         mu_alpha = pm.Normal("mu_alpha", mu=0, sigma=10)
         beta = pm.Normal("beta", mu=0, sigma=10)
         
-        # The exact correction needed to match Stan's logp
-        # Stan's real<lower=0> with normal(0,1) doesn't include the log(2) normalization
-        
-        # Hierarchical county-level intercepts
         alpha = pm.Normal("alpha", mu=mu_alpha, sigma=sigma_alpha, shape=data['J'])
         
-        # Linear predictor (vectorized)
         mu = alpha[county_idx_0based] + floor_measure * beta
         
-        # Likelihood
-        log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, 
-                                  observed=data['log_radon'])
+        if not prior_only:
+            log_radon_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, 
+                                      observed=data['log_radon'])
 
     return model

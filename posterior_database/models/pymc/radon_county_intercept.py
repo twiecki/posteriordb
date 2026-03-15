@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -12,16 +11,13 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         
-        # Parameters
         alpha = pm.Normal("alpha", mu=0, sigma=10, shape=J)
         beta = pm.Normal("beta", mu=0, sigma=10)
         sigma_y = pm.TruncatedNormal("sigma_y", mu=0, sigma=1, lower=0)
         
-        # Likelihood
         mu = alpha[county_idx] + beta * floor_measure
-        y_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
         
-        # Add a constant correction to match Stan's normalization
-        # The difference is approximately 1247, let's try to correct for it
+        if not prior_only:
+            y_obs = pm.Normal("log_radon", mu=mu, sigma=sigma_y, observed=log_radon)
 
     return model

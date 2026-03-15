@@ -1,24 +1,20 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
 
     with pm.Model() as model:
-        # Extract data
         N = data['N']
         D = data['D'] 
         X = data['X']
         y = data['y']
         
-        # Parameters
         beta = pm.Normal("beta", mu=0, sigma=10, shape=D)
         sigma = pm.HalfNormal("sigma", sigma=10)
         
-        # Linear predictor
-        mu = X @ beta
+        mu = pm.Deterministic("mu", X @ beta)
         
-        # Likelihood
-        y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)
+        if not prior_only:
+            y_obs = pm.Normal("y", mu=mu, sigma=sigma, observed=y)
 
     return model

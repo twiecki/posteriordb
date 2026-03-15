@@ -1,5 +1,4 @@
-def make_model(data: dict) -> pm.Model:
-    """PyMC model transpiled from Stan."""
+def make_model(data: dict, prior_only: bool = False) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
@@ -18,14 +17,12 @@ def make_model(data: dict) -> pm.Model:
     x = np.column_stack([c_dist100, c_arsenic, c_educ4, da_inter, de_inter, ae_inter])
 
     with pm.Model() as model:
-        # Parameters - using flat priors (improper in Stan)
         alpha = pm.Flat("alpha")
         beta = pm.Flat("beta", shape=6)
         
-        # Linear predictor
         eta = alpha + x @ beta
         
-        # Likelihood - bernoulli_logit_glm becomes Bernoulli with logit link
-        switched_obs = pm.Bernoulli("switched", logit_p=eta, observed=switched)
+        if not prior_only:
+            switched_obs = pm.Bernoulli("switched", logit_p=eta, observed=switched)
 
     return model
