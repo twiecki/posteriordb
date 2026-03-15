@@ -1,0 +1,28 @@
+def make_model(data: dict) -> pm.Model:
+    """PyMC model transpiled from Stan."""
+    import pymc as pm
+    import pytensor.tensor as pt
+    import numpy as np
+
+    # Extract data
+    N = data['N']
+    kid_score = data['kid_score']
+    mom_work = data['mom_work']
+    
+    # Transformed data: create dummy variables
+    work2 = np.array(mom_work == 2, dtype=float)
+    work3 = np.array(mom_work == 3, dtype=float)
+    work4 = np.array(mom_work == 4, dtype=float)
+
+    with pm.Model() as model:
+        # Parameters
+        beta = pm.Flat("beta", shape=4)
+        sigma = pm.HalfFlat("sigma")
+        
+        # Linear combination
+        mu = beta[0] + beta[1] * work2 + beta[2] * work3 + beta[3] * work4
+        
+        # Likelihood
+        kid_score_obs = pm.Normal("kid_score", mu=mu, sigma=sigma, observed=kid_score)
+
+    return model
