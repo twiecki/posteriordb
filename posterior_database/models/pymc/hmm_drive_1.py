@@ -36,8 +36,8 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         # Parameters (match Stan order: theta1, theta2, phi, lambda)
-        theta1_raw = pm.Flat("theta1_raw", shape=K - 1, initval=np.zeros(K - 1))
-        theta2_raw = pm.Flat("theta2_raw", shape=K - 1, initval=np.zeros(K - 1))
+        theta1_raw = pm.Flat("theta1_raw", shape=K - 1)
+        theta2_raw = pm.Flat("theta2_raw", shape=K - 1)
 
         # phi: ordered[K]
         phi = pm.Normal("phi", mu=0, sigma=10, shape=K,
