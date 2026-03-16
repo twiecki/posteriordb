@@ -16,8 +16,8 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         # Parameters
-        beta = pm.Flat("beta", shape=4)
-        sigma = pm.HalfFlat("sigma")
+        beta = pm.Flat("beta", shape=4, initval=np.array([80.0, 0.0, 0.0, 0.0]))
+        sigma = pm.HalfFlat("sigma", initval=20.0)
         
         # Linear combination
         mu = beta[0] + beta[1] * work2 + beta[2] * work3 + beta[3] * work4

@@ -11,11 +11,13 @@ def make_model(data: dict) -> pm.Model:
         
         # Parameters
         # ordered[2] mu - use ordered transform
-        mu = pm.Normal("mu", mu=0, sigma=2, shape=2, transform=pm.distributions.transforms.ordered)
-        
+        mu = pm.Normal("mu", mu=0, sigma=2, shape=2,
+                       transform=pm.distributions.transforms.ordered,
+                       initval=np.array([-1.0, 1.0]))
+
         # array[2] real<lower=0> sigma - use HalfNormal since prior is normal(0, 2) with lower=0
-        sigma = pm.HalfNormal("sigma", sigma=2, shape=2)
-        
+        sigma = pm.HalfNormal("sigma", sigma=2, shape=2, initval=np.array([1.0, 1.0]))
+
         # real<lower=0, upper=1> theta - mixing probability
         theta = pm.Beta("theta", alpha=5, beta=5)
         

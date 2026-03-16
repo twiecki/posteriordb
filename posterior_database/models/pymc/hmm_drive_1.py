@@ -36,15 +36,17 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         # Parameters (match Stan order: theta1, theta2, phi, lambda)
-        theta1_raw = pm.Flat("theta1_raw", shape=K - 1)
-        theta2_raw = pm.Flat("theta2_raw", shape=K - 1)
+        theta1_raw = pm.Flat("theta1_raw", shape=K - 1, initval=np.zeros(K - 1))
+        theta2_raw = pm.Flat("theta2_raw", shape=K - 1, initval=np.zeros(K - 1))
 
         # phi: ordered[K]
         phi = pm.Normal("phi", mu=0, sigma=10, shape=K,
-                        transform=pm.distributions.transforms.ordered)
+                        transform=pm.distributions.transforms.ordered,
+                        initval=np.array([0.0, 3.0]))
         # lambda: ordered[K]
         lambda_ = pm.Normal("lambda_", mu=0, sigma=10, shape=K,
-                            transform=pm.distributions.transforms.ordered)
+                            transform=pm.distributions.transforms.ordered,
+                            initval=np.array([0.0, 3.0]))
 
         # Transform simplices
         theta1 = _stan_simplex(theta1_raw, K)  # (K,)

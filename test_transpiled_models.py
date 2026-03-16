@@ -72,7 +72,7 @@ def get_bridgestan_reference(stan_code: str, data: dict, n_extra: int = 3, seed:
     Returns (unc_param_names, points) where points is a list of
     (label, unc_point_array, ref_logp).
     """
-    from pymc_rust_compiler.stan_exporter import StanModelExporter
+    from transpailer.stan_exporter import StanModelExporter
 
     exporter = StanModelExporter(stan_code, data=data, n_extra_points=n_extra, seed=seed)
     ctx = exporter.context
