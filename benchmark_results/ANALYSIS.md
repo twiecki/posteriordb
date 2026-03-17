@@ -16,15 +16,15 @@ The metric that matters most to practitioners is **total wall-clock time (compil
 
 | Metric | PyMC wins | Stan wins | Geo. Mean Ratio |
 |--------|-----------|-----------|-----------------|
-| **Total sec / ESS (compile + sample)** | **85 (84%)** | **16 (16%)** | **1.90x PyMC** |
-| sec / ESS (sampling only) | 45 (45%) | 56 (55%) | 1.09x PyMC |
-| Raw sampling time | 52 (51%) | 49 (49%) | 1.30x PyMC |
-| Total time (compile + sample) | 96 (95%) | 5 (5%) | 2.27x PyMC |
+| **Total sec / ESS (compile + sample)** | **87 (87%)** | **13 (13%)** | **2.04x PyMC** |
+| sec / ESS (sampling only) | 45 (45%) | 55 (55%) | 1.16x PyMC |
+| Raw sampling time | 52 (52%) | 48 (48%) | 1.32x PyMC |
+| Total time (compile + sample) | 96 (96%) | 4 (4%) | 2.31x PyMC |
 
 The story changes dramatically depending on what you measure:
 
-- **Sampling-only sec/ESS**: Stan actually wins more models (56 vs 45), producing slightly more effective samples per second of NUTS sampling on average. Stan's C++ gradients are highly optimized.
-- **Total sec/ESS (incl. compilation)**: PyMC wins decisively (85 vs 16). PyMC's numba JIT compilation is typically 2-5x faster than Stan's C++ compilation, which shifts the balance heavily in PyMC's favor for the end-to-end experience.
+- **Sampling-only sec/ESS**: Stan wins more models (55 vs 45), producing slightly more effective samples per second of NUTS sampling on average. Stan's C++ gradients are highly optimized.
+- **Total sec/ESS (incl. compilation)**: PyMC wins decisively (87 vs 13). PyMC's numba JIT compilation is typically 2-5x faster than Stan's C++ compilation, which shifts the balance heavily in PyMC's favor for the end-to-end experience.
 
 ## Where PyMC Dominates
 
@@ -47,7 +47,6 @@ The story changes dramatically depending on what you measure:
 
 | Model | PyMC sec/ESS | Stan sec/ESS | Ratio | Why |
 |-------|-------------|-------------|-------|-----|
-| surgical_model | 0.959 | 0.009 | 0.01x | Transpilation bug (PyMC diverges) |
 | garch11 | 0.013 | 0.004 | 0.30x | Time series, Stan's C++ shines |
 | hmm_example | 0.022 | 0.007 | 0.34x | HMM marginalization |
 | hierarchical_gp | 0.158 | 0.083 | 0.52x | Complex GP |
@@ -55,15 +54,15 @@ The story changes dramatically depending on what you measure:
 | logistic_regression_rhs | 1.201 | 0.704 | 0.59x | Regularized horseshoe |
 | arma11 | 0.002 | 0.001 | 0.65x | Time series |
 
-**Pattern**: Stan wins on time-series models (arma11, garch11), HMMs, and some GP models. Note that `surgical_model` is an outlier due to a transpilation issue causing PyMC to diverge badly — this is not a sampler performance difference. Excluding it, Stan's largest win is only 3.3x (garch11), while PyMC's largest win is 334x (diamonds).
+**Pattern**: Stan wins on time-series models (arma11, garch11), HMMs, and some GP models. Stan's largest win is 3.3x (garch11), while PyMC's largest win is 334x (diamonds) — a highly asymmetric distribution.
 
 ## The Asymmetry
 
 When we look at total sec/ESS, the distribution is **heavily skewed in PyMC's favor**:
-- PyMC wins on **84%** of models
+- PyMC wins on **87%** of models
 - When PyMC wins, gains can be enormous (up to 334x)
-- When Stan wins, the advantage is modest (typically <2x, max 3.3x excluding transpilation bugs)
-- The geometric mean across all models is **1.90x in favor of PyMC**
+- When Stan wins, the advantage is modest (typically <2x, max 3.3x)
+- The geometric mean across all models is **2.04x in favor of PyMC**
 
 This means that for the typical user running a model end-to-end, PyMC/nutpie will almost always be faster or comparable — and when it's faster, the gains are often dramatic.
 
@@ -81,7 +80,7 @@ For the majority of models, numba compilation is 2-5x faster than Stan's C++ com
 ## Diagnostics
 
 Both samplers produce comparable diagnostics (Rhat, ESS, divergences) on most models. A few notable differences:
-- **surgical_model**: PyMC shows severe convergence issues (Rhat=4.03, 3615 divergences) while Stan converges fine — likely a transpilation issue
+- **surgical_model**: Initially showed severe convergence issues due to a transpilation bug (pm.Flat + Potential instead of proper distributions). Fixed by using pm.Normal, pm.InverseGamma, and pm.Binomial — now converges comparably to Stan
 - **mixture models** (normal_mixture, low_dim_gauss_mix_collapse): Both struggle with label switching, as expected
 - **ldaK5**: Both take ~9 hours with poor convergence — this is an inherently difficult model
 
@@ -95,4 +94,4 @@ Both samplers produce comparable diagnostics (Rhat, ESS, divergences) on most mo
 
 ## Conclusion
 
-When measuring what practitioners actually care about — total wall-clock time from start to effective posterior samples — **PyMC with nutpie/numba is faster on 84% of posteriordb models** with a geometric mean efficiency advantage of 1.90x. The advantage comes from two sources: (1) faster numba compilation vs Stan's C++ compilation, and (2) superior sampling efficiency on hierarchical and large-data models. Stan retains an edge in pure sampling efficiency on time-series models and some GPs, but these wins are modest compared to PyMC's gains elsewhere.
+When measuring what practitioners actually care about — total wall-clock time from start to effective posterior samples — **PyMC with nutpie/numba is faster on 87% of posteriordb models** with a geometric mean efficiency advantage of 2.04x. The advantage comes from two sources: (1) faster numba compilation vs Stan's C++ compilation, and (2) superior sampling efficiency on hierarchical and large-data models. Stan retains an edge in pure sampling efficiency on time-series models and some GPs, but these wins are modest compared to PyMC's gains elsewhere.

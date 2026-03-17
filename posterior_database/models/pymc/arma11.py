@@ -3,18 +3,17 @@ def make_model(data: dict) -> pm.Model:
     import pymc as pm
     import pytensor.tensor as pt
     import numpy as np
-    
+    import pytensor
+
     T = data['T']
     y = data['y']
-    
+
     with pm.Model() as model:
         # Priors
         mu = pm.Normal("mu", mu=0, sigma=10)
         phi = pm.Normal("phi", mu=0, sigma=2)
         theta = pm.Normal("theta", mu=0, sigma=2)
         sigma = pm.HalfCauchy("sigma", beta=2.5)
-        
-        import pytensor
 
         # Initial conditions (t=1, which is index 0 in Python)
         nu_0 = mu + phi * mu  # assume err[0] == 0
@@ -34,10 +33,8 @@ def make_model(data: dict) -> pm.Model:
             non_sequences=[mu, phi, theta],
         )
         err = pt.concatenate([pt.atleast_1d(err_0), errs])
-        
-        # Likelihood: err ~ normal(0, sigma) using Potential
-        log_likelihood = pt.sum(pm.logp(pm.Normal.dist(mu=0, sigma=sigma), err))
-        pm.Potential("likelihood", log_likelihood)
-        
-    
+
+        # Likelihood
+        pm.Normal("err_obs", mu=0, sigma=sigma, observed=err)
+
     return model

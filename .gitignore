@@ -19,3 +19,4 @@ TODO.tdl
 tmp*
 __pycache__/
 .pytest_cache/
+posterior_database/models/stan/*/
