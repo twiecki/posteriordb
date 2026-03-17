@@ -21,7 +21,7 @@ def make_model(data: dict) -> pm.Model:
         # Parameters for mean component
         Intercept = pm.StudentT("Intercept", nu=3, mu=-13, sigma=36)
 
-        bs = pm.Flat("bs", shape=Ks, initval=np.zeros(Ks))
+        bs = pm.Flat("bs", shape=Ks)
 
         # Spline parameters for mean
         zs_1_1 = pm.Normal("zs_1_1", mu=0, sigma=1, shape=knots_1)
@@ -30,7 +30,7 @@ def make_model(data: dict) -> pm.Model:
         # Parameters for sigma component
         Intercept_sigma = pm.StudentT("Intercept_sigma", nu=3, mu=0, sigma=10)
 
-        bs_sigma = pm.Flat("bs_sigma", shape=Ks_sigma, initval=np.zeros(Ks_sigma))
+        bs_sigma = pm.Flat("bs_sigma", shape=Ks_sigma)
 
         # Spline parameters for sigma
         zs_sigma_1_1 = pm.Normal("zs_sigma_1_1", mu=0, sigma=1, shape=knots_sigma_1)

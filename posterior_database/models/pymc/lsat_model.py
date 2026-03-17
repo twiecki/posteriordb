@@ -21,11 +21,11 @@ def make_model(data: dict) -> pm.Model:
 
     with pm.Model() as model:
         # Parameters
-        alpha = pm.Normal("alpha", mu=0, sigma=100, shape=T, initval=np.zeros(T))
-        theta = pm.Normal("theta", mu=0, sigma=1, shape=N, initval=np.zeros(N))
+        alpha = pm.Normal("alpha", mu=0, sigma=100, shape=T)
+        theta = pm.Normal("theta", mu=0, sigma=1, shape=N)
 
         # Stan: real<lower=0> beta ~ normal(0, 100) is HalfNormal in PyMC
-        beta = pm.HalfNormal("beta", sigma=100, initval=1.0)
+        beta = pm.HalfNormal("beta", sigma=100)
 
         # Model: bernoulli_logit for all questions at once (vectorized)
         # Stan: r[k] ~ bernoulli_logit(beta * theta - alpha[k])
